@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>AI Smart Match</title>
+</head>
+<body class="bg-slate-50 min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-8">
+            <h1 class="text-3xl font-extrabold text-slate-900">Gemini AI Dispatch Analysis</h1>
+            <p class="text-slate-500">Optimizing assignment for: <span class="text-indigo-600 font-bold"><%= load.cargoName %></span></p>
+        </header>
+
+        <div class="space-y-4">
+            <% aiRanking.forEach((match, index) => { %>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 <%= index === 0 ? 'border-green-500' : 'border-slate-300' %> flex justify-between items-center">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-3">
+                            <h3 class="font-bold text-lg text-slate-800"><%= match.email %></h3>
+                            <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">Score: <%= match.score %>%</span>
+                        </div>
+                        <p class="text-slate-600 text-sm mt-1">"<%= match.reason %>"</p>
+                    </div>
+                    
+                    <form action="/assign-load" method="POST">
+                        <input type="hidden" name="adminEmail" value="<%= adminEmail %>">
+                        <input type="hidden" name="loadId" value="<%= load._id %>">
+                        <input type="hidden" name="driverId" value="<%= match.driverId %>"> <button class="bg-slate-900 text-white px-6 py-2 rounded-xl font-medium hover:bg-black transition">
+                            Assign This Driver
+                        </button>
+                    </form>
+                </div>
+            <% }) %>
+        </div>
+
+        <a href="/admin-dashboard?email=<%= adminEmail %>" class="inline-block mt-8 text-slate-500 hover:text-slate-800 underline">← Back to Manual Dispatch</a>
+    </div>
+</body>
+</html>
