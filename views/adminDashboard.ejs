@@ -3,6 +3,7 @@
 <head>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     <title>Corestone Logistics AI</title>
 </head>
 <body class="bg-slate-50 min-h-screen">
@@ -31,7 +32,7 @@
                     <input type="text" name="origin" placeholder="Origin City" class="w-full p-2 border border-gray-100 rounded" required>
                     <input type="text" name="destination" placeholder="Destination City" class="w-full p-2 border border-gray-100 rounded" required>
                     <input type="number" name="weight" placeholder="Weight (kg)" class="w-full p-2 border border-gray-100 rounded" required>
-                    <button type="submit" class="w-full bg-[#1a202c] text-white py-2 rounded-lg font-bold">Queue Load</button>
+                    <button type="submit" class="w-full bg-[#1a202c] text-white py-2 rounded-lg font-bold transition hover:bg-gray-800">Queue Load</button>
                 </form>
             </div>
         </div>
@@ -39,7 +40,7 @@
         <div class="lg:col-span-9 space-y-6">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <h3 class="font-bold text-gray-500 mb-4 uppercase text-sm">📍 Real-time Route Preview</h3>
-                <div id="map" class="h-[300px] rounded-xl bg-gray-100 mb-6 border border-gray-200"></div>
+                <div id="map" class="h-[300px] rounded-xl bg-gray-100 mb-6 border border-gray-200 z-0 relative"></div>
 
                 <div id="ai-stats" class="grid grid-cols-3 gap-6">
                     <div class="p-4 bg-blue-50 rounded-xl">
@@ -79,7 +80,7 @@
                                 <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-[10px] font-bold uppercase"><%= load.destination %></span>
                             </td>
                             <td class="p-4 text-right">
-                                <button onclick="runAI('<%= load._id %>')" class="bg-amber-400 hover:bg-amber-500 px-6 py-2 rounded-full text-[11px] font-black transition shadow-sm">
+                                <button onclick="runAI(event, '<%= load._id %>', '<%= load.origin %>', '<%= load.destination %>')" class="bg-amber-400 hover:bg-amber-500 px-6 py-2 rounded-full text-[11px] font-black transition shadow-sm">
                                     ✨ RUN SMART DISPATCH
                                 </button>
                             </td>
@@ -92,29 +93,86 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    
     <script>
-        var map = L.map('map').setView([10.0889, 76.3508], 11); // Set to Aroor/Cherthala area
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        // Initialize Map
+        var map = L.map('map').setView([10.0889, 76.3508], 11); 
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
 
-        async function runAI(loadId) {
+        let routingControl = null;
+
+        // Fetch coordinates using OpenStreetMap Nominatim API
+        async function getCoordinates(city) {
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`);
+                const data = await response.json();
+                if (data && data.length > 0) {
+                    return L.latLng(data[0].lat, data[0].lon);
+                }
+            } catch (error) {
+                console.error("Geocoding failed for", city, error);
+            }
+            return null;
+        }
+
+        // Draw the route on the map
+        async function displayRouteOnMap(origin, destination) {
+            // Remove previous route if it exists
+            if (routingControl) {
+                map.removeControl(routingControl);
+            }
+
+            const startCoords = await getCoordinates(origin);
+            const endCoords = await getCoordinates(destination);
+
+            if (startCoords && endCoords) {
+                routingControl = L.Routing.control({
+                    waypoints: [startCoords, endCoords],
+                    routeWhileDragging: false,
+                    addWaypoints: false,
+                    show: false, // Hides the step-by-step directions box
+                    fitSelectedRoutes: true // Auto-zooms to fit the route
+                }).addTo(map);
+            } else {
+                alert("Map Error: Could not pinpoint the exact coordinates for the given cities. Ensure the city names are valid.");
+            }
+        }
+
+        // Run AI Dispatch & Update Map
+        async function runAI(event, loadId, origin, destination) {
             const btn = event.target;
+            const originalText = btn.innerText;
             btn.innerText = "CALCULATING...";
+            btn.disabled = true; // Prevent double clicks
             
+            // 1. Plot the map route concurrently
+            displayRouteOnMap(origin, destination);
+            
+            // 2. Fetch AI Recommendation
             try {
                 const res = await fetch(`/ai-recommend/${loadId}?email=<%= adminEmail %>`);
                 const data = await res.json();
 
-                // Mapping JSON keys to HTML IDs
-                document.getElementById('stat-truck').innerText = data.bestVehicle;
-                document.getElementById('stat-dist').innerText = data.distance;
-                document.getElementById('stat-score').innerText = data.score + "%";
+                if (data.error) {
+                    alert("AI Error: " + data.error);
+                    return;
+                }
+
+                // Update UI Stats
+                document.getElementById('stat-truck').innerText = data.bestVehicle || 'N/A';
+                document.getElementById('stat-dist').innerText = data.distance || 'N/A';
+                document.getElementById('stat-score').innerText = (data.score || '--') + "%";
 
                 alert("AI Recommendation: " + data.reason);
             } catch (err) {
-                alert("AI Error: Check console for details.");
+                alert("Network/Server Error: Check console for details.");
                 console.error(err);
             } finally {
-                btn.innerText = "✨ RUN SMART DISPATCH";
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
         }
     </script>
