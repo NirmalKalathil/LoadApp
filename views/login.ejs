@@ -4,35 +4,41 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <title>Logistics Login</title>
 </head>
-<body class="bg-slate-900 flex items-center justify-center h-screen">
-    <div class="bg-white p-8 rounded-xl shadow-2xl w-96">
+<body class="bg-slate-900 flex items-center justify-center h-screen px-4">
+    <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm">
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-slate-800">SmartLogist</h1>
-            <p class="text-slate-500">Fleet Management System</p>
+            <div class="inline-block p-3 bg-blue-100 rounded-2xl mb-3">
+                <span class="text-3xl">📦</span>
+            </div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight">SmartLogist</h1>
+            <p class="text-slate-500 font-medium text-sm">Enterprise Fleet Solutions</p>
         </div>
         
         <% if(status !== 'ok') { %>
-            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 text-sm">
+            <div class="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg mb-4 text-xs font-bold flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                 <%= status %>
             </div>
         <% } %>
 
-        <form action="/login" method="POST" class="space-y-4">
+        <form action="/login" method="POST" class="space-y-5">
             <div>
-                <label class="block text-sm font-medium text-slate-700">Email Address</label>
-                <input type="email" name="email" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
+                <input type="email" name="email" placeholder="Email Address" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" required>
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700">Password</label>
-                <input type="password" name="password" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
+                <input type="password" name="password" placeholder="Password" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition" required>
             </div>
-            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition">
-                Sign In
+            <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition shadow-lg shadow-slate-200">
+                Enter Dashboard
             </button>
         </form>
-        <p class="mt-6 text-center text-sm text-slate-600">
-            New here? <a href="/signup" class="text-blue-600 hover:underline">Create Account</a>
-        </p>
+
+        <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+            <p class="text-sm text-slate-500">
+                Don't have a business account? <br>
+                <a href="/signup" class="text-blue-600 font-bold hover:underline">Register your Fleet</a>
+            </p>
+        </div>
     </div>
 </body>
 </html>

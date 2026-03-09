@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <title>Driver Portal | SmartLogist</title>
+    <style>#map { height: 300px; border-radius: 1rem; }</style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+    <nav class="bg-indigo-900 text-white p-4 flex justify-between shadow-lg">
+        <h1 class="font-bold">🚚 DRIVER CONSOLE</h1>
+        <span class="text-indigo-200 text-sm"><%= user.email %></span>
+    </nav>
+
+    <div class="p-6 max-w-5xl mx-auto space-y-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h2 class="text-lg font-bold text-slate-800 mb-4">Active Route Map</h2>
+            <div id="map" class="mb-4"></div>
+            <div class="text-center">
+                <p class="text-xs text-slate-400 uppercase font-bold tracking-widest">Select a load below to view route</p>
+            </div>
+        </div>
+
+        <h2 class="text-xl font-bold text-slate-800">My Assignments</h2>
+
+        <div class="grid gap-4">
+            <% if (myLoads.length === 0) { %>
+                <div class="bg-white p-12 rounded-2xl text-center border border-slate-200">
+                    <p class="text-slate-400">No active loads assigned to you yet.</p>
+                </div>
+            <% } else { %>
+                <% myLoads.forEach(load => { %>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-indigo-500 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div class="flex-1">
+                            <h3 class="font-bold text-lg text-slate-800"><%= load.cargoName %></h3>
+                            <p class="text-sm text-slate-500 font-medium"><%= load.origin %> → <%= load.destination %></p>
+                            <div class="mt-2 flex gap-2">
+                                <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase">Weight: <%= load.weight %>kg</span>
+                                <span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase"><%= load.status %></span>
+                            </div>
+                        </div>
+                        <button onclick="viewRoute('<%= load.origin %>', '<%= load.destination %>')" class="w-full md:w-auto bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700 transition">
+                            View Map Route
+                        </button>
+                    </div>
+                <% }) %>
+            <% } %>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script>
+        var map = L.map('map').setView([10.0889, 76.3508], 11);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        let routingControl = null;
+
+        async function getCoordinates(city) {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`);
+            const data = await res.json();
+            return data.length > 0 ? L.latLng(data[0].lat, data[0].lon) : null;
+        }
+
+        async function viewRoute(start, end) {
+            if (routingControl) map.removeControl(routingControl);
+            const s = await getCoordinates(start);
+            const e = await getCoordinates(end);
+            if (s && e) {
+                routingControl = L.Routing.control({
+                    waypoints: [s, e],
+                    createMarker: function() { return null; }, // Hide default markers for clean look
+                    addWaypoints: false,
+                    show: true
+                }).addTo(map);
+            }
+        }
+    </script>
+</body>
+</html>
