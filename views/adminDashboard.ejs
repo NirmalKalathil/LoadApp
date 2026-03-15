@@ -3,199 +3,424 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
-    <title>Admin Dashboard | SmartLogist AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <title>SmartLogist — Admin Command Center</title>
     <style>
-        #map { height: 400px; border-radius: 1rem; z-index: 1; }
-        .leaflet-routing-container { display: none; } /* Keeps UI clean */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:             #f0f4ff;
+            --surface:        #ffffff;
+            --surface2:       #f7f9ff;
+            --surface3:       #eef2ff;
+            --border:         #e2e8f8;
+            --border-strong:  #c7d4f0;
+            --accent:         #2563eb;
+            --accent-light:   #dbeafe;
+            --accent-mid:     #60a5fa;
+            --accent-dark:    #1d4ed8;
+            --accent2:        #0ea5e9;
+            --accent3:        #0284c7;
+            --green:          #059669;
+            --green-bg:       #d1fae5;
+            --amber:          #d97706;
+            --amber-bg:       #fef3c7;
+            --red:            #dc2626;
+            --red-bg:         #fee2e2;
+            --indigo:         #6366f1;
+            --indigo-bg:      #e0e7ff;
+            --text-primary:   #0f172a;
+            --text-secondary: #475569;
+            --text-muted:     #94a3b8;
+            --font-display:   'Syne', sans-serif;
+            --font-body:      'DM Sans', sans-serif;
+            --radius:         18px;
+            --radius-sm:      10px;
+            --shadow-sm:      0 1px 3px rgba(37,99,235,0.07), 0 1px 2px rgba(37,99,235,0.04);
+            --shadow:         0 4px 20px rgba(37,99,235,0.1), 0 1px 4px rgba(37,99,235,0.06);
+            --shadow-lg:      0 10px 40px rgba(37,99,235,0.15), 0 2px 8px rgba(37,99,235,0.08);
+        }
+
+        html { font-size: 14px; }
+        body {
+            background: var(--bg);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            min-height: 100vh;
+        }
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background:
+                radial-gradient(ellipse 900px 600px at 10% 0%, rgba(37,99,235,0.07) 0%, transparent 70%),
+                radial-gradient(ellipse 600px 400px at 90% 100%, rgba(14,165,233,0.06) 0%, transparent 70%);
+        }
+
+        /* NAV */
+        nav {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(255,255,255,0.88);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 36px; height: 62px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 1px 0 var(--border), 0 4px 24px rgba(37,99,235,0.06);
+        }
+        .nav-brand { display: flex; align-items: center; gap: 12px; }
+        .nav-logo {
+            width: 34px; height: 34px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            border-radius: 10px; display: grid; place-items: center;
+            font-size: 15px; box-shadow: 0 4px 12px rgba(37,99,235,0.35);
+        }
+        .nav-title { font-family: var(--font-display); font-weight: 800; font-size: 16px; letter-spacing: -0.4px; color: var(--text-primary); }
+        .nav-title span { color: var(--accent); }
+        .nav-pill { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(37,99,235,0.2); padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
+        .nav-right { display: flex; align-items: center; gap: 18px; }
+        .nav-email { font-size: 11px; color: var(--text-muted); font-family: 'Courier New', monospace; background: var(--surface2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; }
+        .nav-logout { background: var(--surface); border: 1px solid var(--border-strong); color: var(--text-secondary); padding: 6px 16px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+        .nav-logout:hover { background: var(--red); border-color: var(--red); color: #fff; }
+
+        /* LAYOUT */
+        .layout { max-width: 1580px; margin: 0 auto; padding: 28px 36px; display: grid; grid-template-columns: 1fr 340px; gap: 22px; position: relative; z-index: 1; }
+        .col-main { display: flex; flex-direction: column; gap: 22px; }
+        .col-side  { display: flex; flex-direction: column; gap: 22px; }
+
+        /* CARD */
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); animation: fadeUp 0.4s ease both; }
+        .card:nth-child(2) { animation-delay: 0.06s; }
+        .card:nth-child(3) { animation-delay: 0.12s; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card-header { padding: 18px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--surface); }
+        .card-title { font-family: var(--font-display); font-weight: 700; font-size: 13px; color: var(--text-primary); display: flex; align-items: center; gap: 9px; }
+        .card-icon { width: 28px; height: 28px; background: var(--accent-light); border-radius: 8px; display: grid; place-items: center; font-size: 13px; }
+        .card-body { padding: 22px; }
+
+        /* MAP */
+        #map { height: 340px; border-radius: var(--radius-sm); }
+        .map-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-top: 18px; }
+        .stat-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px 18px; transition: box-shadow 0.2s, border-color 0.2s; }
+        .stat-box:hover { box-shadow: var(--shadow); border-color: var(--border-strong); }
+        .stat-label { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 7px; }
+        .sl-blue  { color: var(--accent); }
+        .sl-sky   { color: var(--accent2); }
+        .sl-teal  { color: #0d9488; }
+        .stat-value { font-family: var(--font-display); font-weight: 800; font-size: 20px; color: var(--text-primary); }
+
+        #route-loader { display: none; font-size: 10px; font-weight: 600; color: var(--accent); letter-spacing: 0.4px; animation: pulse 1.2s ease-in-out infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+        /* BADGES */
+        .badge { padding: 3px 9px; border-radius: 20px; font-size: 9px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; white-space: nowrap; }
+        .badge-amber  { background: var(--amber-bg);   color: var(--amber);  border:1px solid rgba(217,119,6,0.25); }
+        .badge-green  { background: var(--green-bg);   color: var(--green);  border:1px solid rgba(5,150,105,0.25); }
+        .badge-blue   { background: var(--accent-light); color: var(--accent); border:1px solid rgba(37,99,235,0.2); }
+        .badge-indigo { background: var(--indigo-bg);  color: var(--indigo); border:1px solid rgba(99,102,241,0.25); }
+        .badge-gray   { background: #f1f5f9;            color: var(--text-secondary); border:1px solid var(--border); }
+        .badge-red    { background: var(--red-bg);     color: var(--red);    border:1px solid rgba(220,38,38,0.2); }
+
+        /* TABLE */
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        thead tr { border-bottom: 1px solid var(--border); background: var(--surface2); }
+        thead th { padding: 11px 20px; font-size: 9px; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; color: var(--text-muted); text-align: left; }
+        tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: var(--surface2); }
+        td { padding: 14px 20px; vertical-align: middle; }
+
+        .cargo-name  { font-family: var(--font-display); font-weight: 700; font-size: 13px; color: var(--text-primary); }
+        .cargo-owner { font-size: 10px; color: var(--accent); font-weight: 500; margin-top: 3px; }
+        .cargo-weight{ font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+        .route-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; }
+        .pill-orig { background: #f1f5f9; border: 1px solid var(--border); color: var(--text-secondary); padding: 3px 9px; border-radius: 5px; font-weight: 600; }
+        .pill-arr  { color: var(--text-muted); font-size: 10px; }
+        .pill-dest { background: var(--accent-light); border: 1px solid rgba(37,99,235,0.2); color: var(--accent); padding: 3px 9px; border-radius: 5px; font-weight: 600; }
+
+        /* AI BUTTON */
+        .ai-btn { width: 36px; height: 36px; background: linear-gradient(135deg, #2563eb, #0ea5e9); border: none; border-radius: 50%; cursor: pointer; display: grid; place-items: center; font-size: 15px; box-shadow: 0 4px 14px rgba(37,99,235,0.35); transition: all 0.2s; }
+        .ai-btn:hover { transform: scale(1.1); box-shadow: 0 6px 20px rgba(37,99,235,0.5); }
+        .ai-btn:active { transform: scale(0.93); }
+        .ai-btn.spinning { animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* FORM */
+        .dispatch-form { display: flex; gap: 8px; align-items: center; }
+        select { background: var(--surface); border: 1px solid var(--border-strong); color: var(--text-primary); padding: 7px 10px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 500; outline: none; cursor: pointer; font-family: var(--font-body); transition: border-color 0.2s, box-shadow 0.2s; max-width: 165px; }
+        select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .btn-dispatch { background: var(--accent); border: none; color: #fff; padding: 7px 14px; border-radius: var(--radius-sm); font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; cursor: pointer; font-family: var(--font-body); transition: all 0.2s; white-space: nowrap; box-shadow: 0 2px 8px rgba(37,99,235,0.3); }
+        .btn-dispatch:hover { background: var(--accent-dark); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(37,99,235,0.4); }
+        .btn-dispatch:active { transform: scale(0.96); }
+
+        /* FLEET */
+        .fleet-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; transition: box-shadow 0.2s, border-color 0.2s; }
+        .fleet-card:hover { box-shadow: var(--shadow-sm); border-color: var(--border-strong); }
+        .fleet-truck { font-family: var(--font-display); font-weight: 700; font-size: 14px; color: var(--text-primary); }
+        .fleet-cap { font-size: 10px; color: var(--text-muted); font-weight: 500; margin-top: 2px; }
+        .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .dot-green { background: var(--green); box-shadow: 0 0 5px rgba(5,150,105,0.6); }
+        .dot-red   { background: var(--red);   box-shadow: 0 0 5px rgba(220,38,38,0.5); }
+
+        /* ADD VEHICLE */
+        .add-card { background: linear-gradient(150deg, #1d4ed8 0%, #0369a1 100%); border-radius: var(--radius); padding: 24px; position: relative; overflow: hidden; box-shadow: var(--shadow-lg); }
+        .add-card::before { content: ''; position: absolute; top: -50px; right: -50px; width: 180px; height: 180px; background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 65%); pointer-events: none; }
+        .add-card::after  { content: ''; position: absolute; bottom: -30px; left: -30px; width: 120px; height: 120px; background: radial-gradient(circle, rgba(14,165,233,0.25), transparent 65%); pointer-events: none; }
+        .add-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; color: #fff; margin-bottom: 6px; }
+        .add-sub { font-size: 11px; color: rgba(255,255,255,0.65); line-height: 1.6; margin-bottom: 20px; }
+        .form-input { width: 100%; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; outline: none; font-family: var(--font-body); transition: border-color 0.2s, background 0.2s; margin-bottom: 10px; }
+        .form-input::placeholder { color: rgba(255,255,255,0.45); }
+        .form-input:focus { border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.18); }
+        .btn-register { width: 100%; background: #fff; border: none; color: var(--accent-dark); padding: 11px; border-radius: var(--radius-sm); font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: 0.3px; cursor: pointer; transition: all 0.2s; position: relative; z-index: 1; }
+        .btn-register:hover { background: var(--accent-light); transform: translateY(-1px); }
+
+        .empty-state { padding: 44px 20px; text-align: center; color: var(--text-muted); font-size: 12px; }
+        .empty-icon { font-size: 30px; margin-bottom: 10px; opacity: 0.45; }
+        .count-chip { background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+        @media (max-width: 1080px) { .layout { grid-template-columns: 1fr; padding: 16px 18px; } }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body>
 
-    <nav class="bg-[#1a202c] text-white p-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
-        <div class="flex items-center gap-3">
-            <span class="text-2xl">🛡️</span>
-            <h1 class="text-xl font-black uppercase tracking-tighter">SmartLogist <span class="text-blue-400">Admin</span></h1>
-        </div>
-        <div class="flex items-center gap-4">
-            <span class="text-gray-400 text-xs font-mono"><%= adminEmail %></span>
-            <a href="/" class="bg-slate-700 hover:bg-red-600 px-4 py-1.5 rounded-lg text-xs font-bold transition">Logout</a>
-        </div>
-    </nav>
+<nav>
+    <div class="nav-brand">
+        <div class="nav-logo">🛡️</div>
+        <span class="nav-title">Smart<span>Logist</span></span>
+        <span class="nav-pill">Admin</span>
+    </div>
+    <div class="nav-right">
+        <span class="nav-email"><%= adminEmail %></span>
+        <a href="/" class="nav-logout">Sign Out</a>
+    </div>
+</nav>
 
-    <div class="max-w-[1600px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        <div class="lg:col-span-8 space-y-6">
-            
-            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="font-bold text-slate-700 uppercase text-sm tracking-widest">📍 Live Dispatch Preview</h2>
-                    <div id="route-loader" class="hidden text-blue-600 text-xs font-bold animate-pulse">Calculating optimal path...</div>
-                </div>
-                <div id="map" class="bg-slate-100 border border-slate-200"></div>
-                
-                <div class="grid grid-cols-3 gap-4 mt-6">
-                    <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                        <p class="text-[10px] font-bold text-blue-500 uppercase">AI Recommendation</p>
-                        <p id="stat-truck" class="text-lg font-black text-slate-800">---</p>
+<div class="layout">
+
+    <div class="col-main">
+
+        <!-- MAP -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><span class="card-icon">📍</span>Live Dispatch Preview</span>
+                <span id="route-loader">⟳ Calculating optimal path…</span>
+            </div>
+            <div class="card-body">
+                <div id="map"></div>
+                <div class="map-stats">
+                    <div class="stat-box">
+                        <div class="stat-label sl-blue">AI Recommendation</div>
+                        <div class="stat-value" id="stat-truck">—</div>
                     </div>
-                    <div class="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
-                        <p class="text-[10px] font-bold text-indigo-500 uppercase">Route Distance</p>
-                        <p id="stat-dist" class="text-lg font-black text-slate-800">---</p>
+                    <div class="stat-box">
+                        <div class="stat-label sl-sky">Route Distance</div>
+                        <div class="stat-value" id="stat-dist">—</div>
                     </div>
-                    <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-                        <p class="text-[10px] font-bold text-emerald-500 uppercase">Efficiency</p>
-                        <p id="stat-score" class="text-lg font-black text-slate-800">---</p>
+                    <div class="stat-box">
+                        <div class="stat-label sl-teal">Efficiency Score</div>
+                        <div class="stat-value" id="stat-score">—</div>
                     </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h3 class="font-bold text-slate-800">Load Requests <span class="text-slate-400 font-normal ml-2">(Owner-Created)</span></h3>
-                    <span class="bg-amber-100 text-amber-700 text-[10px] font-black px-2 py-1 rounded-full uppercase">Pending Review</span>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-slate-50 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
-                            <tr>
-                                <th class="p-4">Cargo / Owner</th>
-                                <th class="p-4">Route (Origin-Dest)</th>
-                                <th class="p-4">AI Insight</th>
-                                <th class="p-4">Assign Driver</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-50">
-                            <% loads.forEach(load => { %>
-                            <tr class="hover:bg-slate-50 transition group">
-                                <td class="p-4">
-                                    <p class="font-bold text-slate-800"><%= load.cargoName %></p>
-                                    <p class="text-[10px] text-indigo-500 font-medium"><%= load.ownerEmail %></p>
-                                </td>
-                                <td class="p-4">
-                                    <div class="flex items-center gap-2 text-xs">
-                                        <span class="bg-slate-200 px-2 py-1 rounded font-bold"><%= load.origin %></span>
-                                        <span class="text-slate-300">→</span>
-                                        <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold"><%= load.destination %></span>
-                                    </div>
-                                    <p class="text-[10px] text-slate-400 mt-1"><%= load.weight %> kg</p>
-                                </td>
-                                <td class="p-4">
-                                    <button onclick="runAI(event, '<%= load._id %>', '<%= load.origin %>', '<%= load.destination %>')" 
-                                            class="bg-amber-400 hover:bg-amber-500 text-white p-2 rounded-full shadow-lg shadow-amber-100 transition active:scale-90">
-                                        ✨
-                                    </button>
-                                </td>
-                                <td class="p-4">
-                                    <form action="/assign-load" method="POST" class="flex gap-2">
-                                        <input type="hidden" name="loadId" value="<%= load._id %>">
-                                        <input type="hidden" name="adminEmail" value="<%= adminEmail %>">
-                                        <select name="driverId" class="bg-white border border-slate-200 text-[11px] font-bold p-2 rounded-lg outline-none focus:ring-2 focus:ring-blue-500">
-                                            <% drivers.forEach(driver => { %>
-                                                <option value="<%= driver._id %>"><%= driver.email %></option>
-                                            <% }) %>
-                                        </select>
-                                        <button type="submit" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-[10px] font-bold hover:bg-black transition">Dispatch</button>
-                                    </form>
-                                </td>
-                            </tr>
-                            <% }) %>
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </div>
 
-        <div class="lg:col-span-4 space-y-6">
-            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                <h3 class="font-bold text-slate-700 mb-6 uppercase text-xs tracking-widest flex items-center justify-between">
-                    Fleet Overview
-                    <span class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500"><%= vehicles.length %> Total</span>
-                </h3>
-                
-                <div class="space-y-4">
-                    <% vehicles.forEach(v => { %>
-                        <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                            <div>
-                                <p class="font-black text-slate-800 text-sm"><%= v.truckNumber %></p>
-                                <p class="text-[10px] text-slate-500 font-bold uppercase">Cap: <%= v.capacity %>kg</p>
-                            </div>
-                            <span class="px-2 py-1 rounded-lg text-[9px] font-black uppercase <%= v.status === 'Available' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600' %>">
-                                <%= v.status %>
-                            </span>
-                        </div>
-                    <% }) %>
-                </div>
+        <!-- PENDING LOADS -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">
+                    <span class="card-icon">📦</span>
+                    Load Requests
+                    <span style="color:var(--text-muted);font-weight:400;font-size:11px;font-family:var(--font-body)">Owner-Created</span>
+                </span>
+                <span class="badge badge-amber">Pending Review</span>
             </div>
-
-            <div class="bg-indigo-600 p-6 rounded-3xl text-white shadow-xl shadow-indigo-100">
-                <h3 class="font-bold mb-2">Internal Fleet Add</h3>
-                <p class="text-xs text-indigo-200 mb-4 font-medium leading-relaxed">Register company-owned vehicles directly here.</p>
-                <form action="/add-vehicle" method="POST" class="space-y-3">
-                    <input type="hidden" name="adminEmail" value="<%= adminEmail %>">
-                    <input type="text" name="truckNumber" placeholder="Truck Plate" class="w-full bg-indigo-500/50 border-none rounded-xl p-3 text-sm placeholder-indigo-300 outline-none text-white font-bold" required>
-                    <input type="number" name="capacity" placeholder="Capacity (kg)" class="w-full bg-indigo-500/50 border-none rounded-xl p-3 text-sm placeholder-indigo-300 outline-none text-white font-bold" required>
-                    <button class="w-full bg-white text-indigo-600 font-black py-3 rounded-xl hover:bg-indigo-50 transition active:scale-95">Register System Truck</button>
-                </form>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cargo / Owner</th>
+                            <th>Route</th>
+                            <th>AI Insight</th>
+                            <th>Assign Driver</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% pendingLoads.forEach(load => { %>
+                        <tr>
+                            <td>
+                                <div class="cargo-name"><%= load.cargoName %></div>
+                                <div class="cargo-owner"><%= load.ownerEmail %></div>
+                                <div class="cargo-weight"><%= load.weight %> kg</div>
+                            </td>
+                            <td>
+                                <div class="route-pill">
+                                    <span class="pill-orig"><%= load.origin %></span>
+                                    <span class="pill-arr">→</span>
+                                    <span class="pill-dest"><%= load.destination %></span>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="ai-btn" onclick="runAI(event,'<%= load._id %>','<%= load.origin %>','<%= load.destination %>')">✨</button>
+                            </td>
+                            <td>
+                                <form action="/assign-load" method="POST" class="dispatch-form">
+                                    <input type="hidden" name="loadId"     value="<%= load._id %>">
+                                    <input type="hidden" name="adminEmail" value="<%= adminEmail %>">
+                                    <select name="driverId">
+                                        <% drivers.forEach(driver => { %>
+                                            <option value="<%= driver._id %>"><%= driver.email %></option>
+                                        <% }) %>
+                                    </select>
+                                    <button type="submit" class="btn-dispatch">Dispatch</button>
+                                </form>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
             </div>
         </div>
+
+        <!-- ACTIVE DISPATCHES -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><span class="card-icon">🚛</span>Active Dispatches</span>
+                <span class="badge badge-green"><%= activeLoads.length %> Active</span>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cargo</th><th>Route</th><th>Driver</th>
+                            <th>AI Price</th><th>Owner Price</th><th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if(activeLoads.length === 0) { %>
+                        <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🚦</div>No dispatched loads yet</div></td></tr>
+                        <% } else { %>
+                        <% activeLoads.forEach(load => { %>
+                        <tr>
+                            <td><div class="cargo-name"><%= load.cargoName %></div></td>
+                            <td>
+                                <div class="route-pill">
+                                    <span class="pill-orig"><%= load.origin %></span>
+                                    <span class="pill-arr">→</span>
+                                    <span class="pill-dest"><%= load.destination %></span>
+                                </div>
+                            </td>
+                            <td style="font-size:12px;color:var(--text-secondary);font-weight:500;"><%= load.assignedDriver ? load.assignedDriver : "Assigned" %></td>
+                            <td><span class="badge badge-blue">₹ <%= load.suggestedPrice || "—" %></span></td>
+                            <td><span class="badge badge-green">₹ <%= load.ownerPrice || "—" %></span></td>
+                            <td>
+                                <%
+                                    let sc = 'badge-gray';
+                                    if(load.status === 'Assigned')  sc = 'badge-blue';
+                                    if(load.status === 'Picked Up') sc = 'badge-indigo';
+                                    if(load.status === 'Delivered') sc = 'badge-green';
+                                %>
+                                <span class="badge <%= sc %>"><%= load.status %></span>
+                            </td>
+                        </tr>
+                        <% }) %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
-    <script>
-        var map = L.map('map').setView([10.0889, 76.3508], 10);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        let routingControl = null;
+    <div class="col-side">
 
-        async function getCoords(city) {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`);
-            const data = await res.json();
-            return data.length > 0 ? L.latLng(data[0].lat, data[0].lon) : null;
-        }
+        <!-- FLEET -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><span class="card-icon">🚚</span>Fleet Overview</span>
+                <span class="count-chip"><%= vehicles.length %> Total</span>
+            </div>
+            <div class="card-body" style="display:flex;flex-direction:column;gap:11px;">
+                <% vehicles.forEach(v => { %>
+                <div class="fleet-card">
+                    <div>
+                        <div class="fleet-truck"><%= v.truckNumber %></div>
+                        <div class="fleet-cap"><%= v.capacity %> kg capacity</div>
+                    </div>
+                    <% if(v.status === 'Available') { %>
+                        <span class="badge badge-green"><span class="dot dot-green"></span>Available</span>
+                    <% } else { %>
+                        <span class="badge badge-red"><span class="dot dot-red"></span>On Route</span>
+                    <% } %>
+                </div>
+                <% }) %>
+            </div>
+        </div>
 
-        async function runAI(event, loadId, origin, destination) {
-            const btn = event.target;
-            const loader = document.getElementById('route-loader');
-            btn.classList.add('animate-spin');
-            loader.classList.remove('hidden');
+        <!-- ADD VEHICLE -->
+        <div class="add-card">
+            <div class="add-title">Register Company Vehicle</div>
+            <div class="add-sub">Add internal fleet trucks directly to the dispatch system.</div>
+            <form action="/add-vehicle" method="POST">
+                <input type="hidden" name="adminEmail" value="<%= adminEmail %>">
+                <input type="text"   name="truckNumber" placeholder="Truck Plate Number" class="form-input" required>
+                <input type="number" name="capacity"    placeholder="Capacity (kg)"       class="form-input" required>
+                <button type="submit" class="btn-register">Register Truck →</button>
+            </form>
+        </div>
 
-            try {
-                // 1. Plot Route on Map
-                if (routingControl) map.removeControl(routingControl);
-                const start = await getCoords(origin);
-                const end = await getCoords(destination);
-                
-                if (start && end) {
-                    routingControl = L.Routing.control({
-                        waypoints: [start, end],
-                        routeWhileDragging: false,
-                        addWaypoints: false,
-                        show: false,
-                        fitSelectedRoutes: true
-                    }).addTo(map);
-                }
+    </div>
 
-                // 2. Fetch AI Dispatch Logic
-                const res = await fetch(`/ai-recommend/${loadId}?email=<%= adminEmail %>`);
-                const data = await res.json();
+</div>
 
-                if (data.error) {
-                    alert("AI Error: " + data.error);
-                } else {
-                    document.getElementById('stat-truck').innerText = data.bestVehicle || 'N/A';
-                    document.getElementById('stat-dist').innerText = data.distance || 'N/A';
-                    document.getElementById('stat-score').innerText = (data.score || '--') + "%";
-                }
-            } catch (err) {
-                console.error(err);
-            } finally {
-                btn.classList.remove('animate-spin');
-                loader.classList.add('hidden');
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+<style>.leaflet-routing-container{display:none}</style>
+<script>
+    var map = L.map('map').setView([10.0889, 76.3508], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+    let routingControl = null;
+
+    async function getCoords(city) {
+        const res  = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`);
+        const data = await res.json();
+        return data.length > 0 ? L.latLng(data[0].lat, data[0].lon) : null;
+    }
+
+    async function runAI(event, loadId, origin, destination) {
+        const btn    = event.currentTarget;
+        const loader = document.getElementById('route-loader');
+        btn.classList.add('spinning');
+        loader.style.display = 'inline';
+        try {
+            if (routingControl) map.removeControl(routingControl);
+            const start = await getCoords(origin);
+            const end   = await getCoords(destination);
+            if (start && end) {
+                routingControl = L.Routing.control({
+                    waypoints: [start, end],
+                    routeWhileDragging: false, addWaypoints: false,
+                    show: false, fitSelectedRoutes: true,
+                    lineOptions: { styles: [{ color: '#2563eb', weight: 4, opacity: 0.85 }] }
+                }).addTo(map);
             }
-        }
-    </script>
+            const res  = await fetch(`/ai-recommend/${loadId}?email=<%= adminEmail %>`);
+            const data = await res.json();
+            if (data.error) { alert('AI Error: ' + data.error); }
+            else {
+                document.getElementById('stat-truck').innerText = data.bestVehicle || 'N/A';
+                document.getElementById('stat-dist').innerText  = data.distance    || 'N/A';
+                document.getElementById('stat-score').innerText = (data.score || '--') + '%';
+            }
+        } catch (err) { console.error(err); }
+        finally { btn.classList.remove('spinning'); loader.style.display = 'none'; }
+    }
+</script>
 </body>
 </html>

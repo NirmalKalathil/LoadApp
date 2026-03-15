@@ -1,80 +1,275 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <title>Driver Portal | SmartLogist</title>
-    <style>#map { height: 300px; border-radius: 1rem; }</style>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg:             #f0f4ff;
+            --surface:        #ffffff;
+            --surface2:       #f7f9ff;
+            --border:         #e2e8f8;
+            --border-strong:  #c7d4f0;
+            --accent:         #2563eb;
+            --accent-light:   #dbeafe;
+            --accent-dark:    #1d4ed8;
+            --accent2:        #0ea5e9;
+            --green:          #059669;
+            --green-bg:       #d1fae5;
+            --amber:          #d97706;
+            --amber-bg:       #fef3c7;
+            --red:            #dc2626;
+            --indigo:         #6366f1;
+            --indigo-bg:      #e0e7ff;
+            --text-primary:   #0f172a;
+            --text-secondary: #475569;
+            --text-muted:     #94a3b8;
+            --font-display:   'Syne', sans-serif;
+            --font-body:      'DM Sans', sans-serif;
+            --radius:         18px;
+            --radius-sm:      10px;
+            --shadow-sm:      0 1px 3px rgba(37,99,235,0.07), 0 1px 2px rgba(37,99,235,0.04);
+            --shadow:         0 4px 20px rgba(37,99,235,0.1);
+            --shadow-lg:      0 10px 40px rgba(37,99,235,0.15);
+        }
+        html { font-size: 14px; }
+        body { background: var(--bg); color: var(--text-primary); font-family: var(--font-body); min-height: 100vh; }
+        body::before {
+            content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background:
+                radial-gradient(ellipse 900px 500px at 10% 0%, rgba(37,99,235,0.07) 0%, transparent 70%),
+                radial-gradient(ellipse 600px 400px at 90% 100%, rgba(14,165,233,0.06) 0%, transparent 70%);
+        }
+
+        /* NAV */
+        nav {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(255,255,255,0.88); backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border); padding: 0 36px; height: 62px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 1px 0 var(--border), 0 4px 24px rgba(37,99,235,0.06);
+        }
+        .nav-brand { display: flex; align-items: center; gap: 12px; }
+        .nav-logo { width: 34px; height: 34px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 10px; display: grid; place-items: center; font-size: 15px; box-shadow: 0 4px 12px rgba(37,99,235,0.35); }
+        .nav-title { font-family: var(--font-display); font-weight: 800; font-size: 16px; letter-spacing: -0.4px; color: var(--text-primary); }
+        .nav-title span { color: var(--accent); }
+        .nav-pill { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(37,99,235,0.2); padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
+        .nav-email { font-size: 11px; color: var(--text-muted); font-family: 'Courier New', monospace; background: var(--surface2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; }
+
+        /* LAYOUT */
+        .layout { max-width: 1000px; margin: 0 auto; padding: 28px 36px; display: flex; flex-direction: column; gap: 22px; position: relative; z-index: 1; }
+
+        /* CARD */
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); animation: fadeUp 0.4s ease both; }
+        .card:nth-child(2) { animation-delay: 0.05s; }
+        .card:nth-child(3) { animation-delay: 0.1s; }
+        .card:nth-child(4) { animation-delay: 0.15s; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card-header { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+        .card-title { font-family: var(--font-display); font-weight: 700; font-size: 13px; color: var(--text-primary); display: flex; align-items: center; gap: 9px; }
+        .card-icon { width: 28px; height: 28px; background: var(--accent-light); border-radius: 8px; display: grid; place-items: center; font-size: 13px; }
+        .card-body { padding: 22px; }
+
+        /* MAP */
+        #map { height: 300px; border-radius: var(--radius-sm); }
+        .map-hint { text-align: center; margin-top: 12px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); }
+
+        /* FORM */
+        .form-group { display: flex; flex-direction: column; gap: 10px; }
+        .input { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text-primary); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; outline: none; font-family: var(--font-body); transition: border-color 0.2s, box-shadow 0.2s; }
+        .input::placeholder { color: var(--text-muted); }
+        .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: var(--surface); }
+        .btn { width: 100%; border: none; padding: 11px; border-radius: var(--radius-sm); font-family: var(--font-display); font-weight: 700; font-size: 12px; letter-spacing: 0.3px; cursor: pointer; transition: all 0.2s; }
+        .btn-blue { background: var(--accent); color: #fff; box-shadow: 0 2px 10px rgba(37,99,235,0.3); }
+        .btn-blue:hover { background: var(--accent-dark); transform: translateY(-1px); }
+
+        /* TOAST */
+        .toast { padding: 14px 18px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 10px; animation: fadeUp 0.3s ease; }
+        .toast-green { background: var(--green-bg); border: 1px solid rgba(5,150,105,0.25); color: #065f46; }
+
+        /* SECTION TITLE */
+        .section-title { font-family: var(--font-display); font-weight: 800; font-size: 16px; color: var(--text-primary); }
+
+        /* ASSIGNMENT CARD */
+        .assign-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 20px 22px;
+            display: flex; flex-direction: column; gap: 14px;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.2s, border-color 0.2s;
+            animation: fadeUp 0.4s ease both;
+        }
+        .assign-card:hover { box-shadow: var(--shadow); }
+        .assign-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+        .assign-cargo { font-family: var(--font-display); font-weight: 700; font-size: 16px; color: var(--text-primary); }
+        .assign-route { font-size: 12px; color: var(--text-secondary); font-weight: 500; margin-top: 4px; }
+        .assign-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 2px; }
+
+        .tag { padding: 3px 9px; border-radius: 20px; font-size: 9px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; white-space: nowrap; }
+        .tag-gray   { background: #f1f5f9; color: var(--text-secondary); border: 1px solid var(--border); }
+        .tag-blue   { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(37,99,235,0.2); }
+        .tag-green  { background: var(--green-bg); color: var(--green); border: 1px solid rgba(5,150,105,0.25); }
+        .tag-amber  { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(217,119,6,0.25); }
+
+        .assign-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-action { border: none; padding: 9px 18px; border-radius: var(--radius-sm); font-family: var(--font-display); font-weight: 700; font-size: 11px; letter-spacing: 0.3px; cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-block; white-space: nowrap; }
+        .btn-map    { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(37,99,235,0.2); }
+        .btn-map:hover { background: var(--accent); color: #fff; }
+        .btn-pickup { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(217,119,6,0.25); }
+        .btn-pickup:hover { background: var(--amber); color: #fff; }
+        .btn-deliver{ background: var(--green-bg); color: var(--green); border: 1px solid rgba(5,150,105,0.25); }
+        .btn-deliver:hover { background: var(--green); color: #fff; }
+
+        .empty-state { padding: 52px 20px; text-align: center; color: var(--text-muted); font-size: 12px; }
+        .empty-icon  { font-size: 32px; margin-bottom: 10px; opacity: 0.4; }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+        @media (max-width: 700px) { .layout { padding: 16px 18px; } .assign-top { flex-direction: column; } }
+    </style>
 </head>
-<body class="bg-slate-100 min-h-screen">
-    <nav class="bg-indigo-900 text-white p-4 flex justify-between shadow-lg">
-        <h1 class="font-bold">🚚 DRIVER CONSOLE</h1>
-        <span class="text-indigo-200 text-sm"><%= user.email %></span>
-    </nav>
+<body>
 
-    <div class="p-6 max-w-5xl mx-auto space-y-6">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h2 class="text-lg font-bold text-slate-800 mb-4">Active Route Map</h2>
-            <div id="map" class="mb-4"></div>
-            <div class="text-center">
-                <p class="text-xs text-slate-400 uppercase font-bold tracking-widest">Select a load below to view route</p>
-            </div>
+<nav>
+    <div class="nav-brand">
+        <div class="nav-logo">🚚</div>
+        <span class="nav-title">Smart<span>Logist</span></span>
+        <span class="nav-pill">Driver</span>
+    </div>
+    <span class="nav-email"><%= user.email %></span>
+</nav>
+
+<div class="layout">
+
+    <!-- MAP -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><span class="card-icon">📍</span>Active Route Map</span>
         </div>
-
-        <h2 class="text-xl font-bold text-slate-800">My Assignments</h2>
-
-        <div class="grid gap-4">
-            <% if (myLoads.length === 0) { %>
-                <div class="bg-white p-12 rounded-2xl text-center border border-slate-200">
-                    <p class="text-slate-400">No active loads assigned to you yet.</p>
-                </div>
-            <% } else { %>
-                <% myLoads.forEach(load => { %>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border-l-4 border-indigo-500 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div class="flex-1">
-                            <h3 class="font-bold text-lg text-slate-800"><%= load.cargoName %></h3>
-                            <p class="text-sm text-slate-500 font-medium"><%= load.origin %> → <%= load.destination %></p>
-                            <div class="mt-2 flex gap-2">
-                                <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase">Weight: <%= load.weight %>kg</span>
-                                <span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase"><%= load.status %></span>
-                            </div>
-                        </div>
-                        <button onclick="viewRoute('<%= load.origin %>', '<%= load.destination %>')" class="w-full md:w-auto bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700 transition">
-                            View Map Route
-                        </button>
-                    </div>
-                <% }) %>
-            <% } %>
+        <div class="card-body">
+            <div id="map"></div>
+            <p class="map-hint">Select a load below to view route</p>
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
-    <script>
-        var map = L.map('map').setView([10.0889, 76.3508], 11);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        let routingControl = null;
+    <!-- REGISTER VEHICLE -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><span class="card-icon">🚛</span>Register Vehicle</span>
+        </div>
+        <div class="card-body">
+            <form action="/add-vehicle" method="POST" class="form-group">
+                <input type="hidden" name="adminEmail" value="<%= user.email %>">
+                <input type="text"   name="truckNumber" placeholder="Plate (e.g., KL-01-9999)" class="input" required>
+                <input type="number" name="capacity"    placeholder="Capacity (kg)"              class="input" required>
+                <button type="submit" class="btn btn-blue">Add to Fleet</button>
+            </form>
+        </div>
+    </div>
 
-        async function getCoordinates(city) {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`);
-            const data = await res.json();
-            return data.length > 0 ? L.latLng(data[0].lat, data[0].lon) : null;
-        }
+    <!-- SUCCESS TOAST -->
+    <% if (typeof msg !== 'undefined') { %>
+    <div class="toast toast-green">
+        <% if(msg === 'pickup') { %>
+            🚚 Load successfully picked up!
+        <% } %>
+        <% if(msg === 'delivered') { %>
+            ✅ Delivery completed successfully!
+        <% } %>
+    </div>
+    <% } %>
 
-        async function viewRoute(start, end) {
-            if (routingControl) map.removeControl(routingControl);
-            const s = await getCoordinates(start);
-            const e = await getCoordinates(end);
-            if (s && e) {
-                routingControl = L.Routing.control({
-                    waypoints: [s, e],
-                    createMarker: function() { return null; }, // Hide default markers for clean look
-                    addWaypoints: false,
-                    show: true
-                }).addTo(map);
-            }
+    <!-- ASSIGNMENTS HEADER -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px;">
+        <span class="section-title">My Assignments</span>
+        <span style="font-size:11px;color:var(--text-muted);font-weight:500;"><%= myLoads.length %> load<%= myLoads.length !== 1 ? 's' : '' %></span>
+    </div>
+
+    <!-- ASSIGNMENT CARDS -->
+    <% if(myLoads.length === 0) { %>
+    <div class="card">
+        <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            No active loads assigned to you yet.
+        </div>
+    </div>
+    <% } %>
+
+    <% myLoads.forEach((load, i) => { %>
+    <div class="assign-card" style="animation-delay: <%= i * 0.06 %>s">
+        <div class="assign-top">
+            <div>
+                <div class="assign-cargo"><%= load.cargoName %></div>
+                <div class="assign-route"><%= load.origin %> → <%= load.destination %></div>
+                <div class="assign-tags">
+                    <span class="tag tag-gray">Weight: <%= load.weight %>kg</span>
+                    <span class="tag tag-blue"><%= load.status %></span>
+                    <span class="tag tag-green">Fee: ₹<%= load.ownerPrice || "Not Set" %></span>
+                    <span class="tag tag-amber">AI: ₹<%= load.suggestedPrice || "Calculating" %></span>
+                </div>
+            </div>
+        </div>
+        <div class="assign-actions">
+            <button class="btn-action btn-map" onclick="viewRoute('<%= load.origin %>', '<%= load.destination %>')">
+                🗺 View Route
+            </button>
+            <% if(load.status === 'Assigned') { %>
+            <a href="/driver/pickup-load/<%= load._id %>?email=<%= user.email %>" class="btn-action btn-pickup">
+                📦 Pickup Load
+            </a>
+            <% } %>
+            <% if(load.status === 'Picked Up') { %>
+            <a href="/driver/deliver-load/<%= load._id %>?email=<%= user.email %>" class="btn-action btn-deliver">
+                ✅ Mark Delivered
+            </a>
+            <% } %>
+        </div>
+    </div>
+    <% }) %>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+<style>.leaflet-routing-container { display: none; }</style>
+<script>
+    var map = L.map('map').setView([10.0889, 76.3508], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+    let routingControl = null;
+
+    async function getCoordinates(city) {
+        const res  = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`);
+        const data = await res.json();
+        return data.length > 0 ? L.latLng(data[0].lat, data[0].lon) : null;
+    }
+
+    async function viewRoute(start, end) {
+        if (routingControl) map.removeControl(routingControl);
+        const startCoords = await getCoordinates(start);
+        const endCoords   = await getCoordinates(end);
+        if (startCoords && endCoords) {
+            routingControl = L.Routing.control({
+                waypoints: [startCoords, endCoords],
+                createMarker: () => null,
+                addWaypoints: false, show: false,
+                fitSelectedRoutes: true,
+                lineOptions: { styles: [{ color: '#2563eb', weight: 4, opacity: 0.85 }] }
+            }).addTo(map);
+            map.scrollIntoView ? null : window.scrollTo({ top: 0, behavior: 'smooth' });
         }
-    </script>
+    }
+</script>
 </body>
 </html>

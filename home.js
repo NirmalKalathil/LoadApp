@@ -35,10 +35,18 @@ const loadSchema = new mongoose.Schema({
     weight: Number,
     origin: String,
     destination: String,
-    status: { type: String, default: 'Pending' },
+    status: {
+        type: String,
+        enum: ['Pending','Assigned','Picked Up','Delivered'],
+        default: 'Pending'
+    },
+
     ownerEmail: String, // Tracks who created the load
     assignedDriver: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
-    assignedVehicle: String
+    assignedVehicle: String,
+    deliveryFee: Number ,       // final price paid to driver
+    suggestedPrice: Number , 
+    ownerPrice: Number    
 });
 const vehicleSchema = new mongoose.Schema({
     truckNumber: String,
@@ -125,12 +133,23 @@ app.get("/owner-dashboard", async (req, res) => {
 
     if (!user || user.role !== 'owner') return res.redirect("/");
 
-    // Owners only see their own registered vehicles
-    const myVehicles = await Vehicle.find({ ownerEmail: email });
-
-    res.render("ownerDashboard", { user, myVehicles });
+   const myVehicles = await Vehicle.find({ ownerEmail: email });
+   
+    const myLoads = await Load.find({ ownerEmail: email });
+    res.render("ownerDashboard", { user, myVehicles, myLoads });
 });
 
+app.post("/set-owner-price", async (req, res) => {
+
+    const { loadId, ownerPrice, ownerEmail } = req.body;
+
+    await Load.findByIdAndUpdate(loadId, {
+        ownerPrice: ownerPrice
+    });
+
+    res.redirect(`/owner-dashboard?email=${ownerEmail}`);
+
+});
 // ================= DRIVER PORTAL =================
 app.get("/driver-portal", async (req, res) => {
     const email = req.query.email;
@@ -140,46 +159,97 @@ app.get("/driver-portal", async (req, res) => {
 
     // Drivers see loads assigned specifically to them
     const myLoads = await Load.find({ assignedDriver: user._id });
+     const myVehicles = await Vehicle.find({ driverEmail: email });
 
-    res.render("driverPortal", { user, myLoads });
+    res.render("driverPortal", { user, myLoads, myVehicles, msg: req.query.msg });
 });
-app.post("/add-vehicle", roleAuth(['owner', 'admin']), async (req, res) => {
+app.post("/add-vehicle", roleAuth(['driver', 'admin']), async (req, res) => {
     await new Vehicle({
         truckNumber: req.body.truckNumber,
         capacity: req.body.capacity,
-        ownerEmail: req.body.adminEmail // Link vehicle to owner
+        driverEmail: req.body.adminEmail // Link vehicle to owner
     }).save();
     
-    const redirectRoute = req.user.role === 'admin' ? 'admin-dashboard' : 'owner-dashboard';
+    const redirectRoute = req.user.role === 'admin' ? 'admin-dashboard' : 'driver-portal';
     res.redirect(`/${redirectRoute}?email=${req.body.adminEmail}`);
 });
 
+app.get("/driver/pickup-load/:loadId", async (req, res) => {
+
+    await Load.findByIdAndUpdate(req.params.loadId, {
+        status: "Picked Up"
+    });
+
+    res.redirect(`/driver-portal?email=${req.query.email}&msg=pickup`);
+
+});
+app.get("/driver/pickup-load/:loadId", async (req, res) => {
+
+    await Load.findByIdAndUpdate(req.params.loadId,{
+        status:"Picked Up"
+    });
+
+    res.redirect(`/driver-portal?email=${req.query.email}&msg=pickup`);
+});
+app.get("/driver/deliver-load/:loadId", async (req, res) => {
+
+    await Load.findByIdAndUpdate(req.params.loadId,{
+        status:"Delivered"
+    });
+
+    res.redirect(`/driver-portal?email=${req.query.email}&msg=delivered`);
+});
 // ================= SUPER ADMIN ROUTE =================
 app.get("/admin-dashboard", async (req, res) => {
     try {
-        // 1. Fetch all the data the dashboard needs
-        const loads = await Load.find({}); 
-        const vehicles = await Vehicle.find({});
-        
-        // 2. THIS IS THE MISSING PIECE: Fetch only users with the 'driver' role
-        const drivers = await User.find({ role: 'driver' }); 
 
-        // 3. Pass all these variables to the EJS file
-        res.render("adminDashboard", { 
-            loads: loads, 
-            vehicles: vehicles, 
-            drivers: drivers, // Make sure this matches the variable name in your EJS
-            adminEmail: req.query.email 
+        // Loads waiting for admin action
+        const pendingLoads = await Load.find({ status: "Pending" });
+
+        // Loads already dispatched / active
+        const activeLoads = await Load.find({ status: { $ne: "Pending" } });
+
+        const vehicles = await Vehicle.find({});
+        const drivers = await User.find({ role: "driver" });
+
+        res.render("adminDashboard", {
+            pendingLoads,
+            activeLoads,
+            vehicles,
+            drivers,
+            adminEmail: req.query.email
         });
+
     } catch (error) {
         console.error("Error loading admin dashboard:", error);
         res.status(500).send("Internal Server Error");
     }
 });
 
+app.post("/assign-load", adminAuth, async (req, res) => {
+
+    await Load.findByIdAndUpdate(req.body.loadId, {
+        assignedDriver: req.body.driverId,
+        status: "Assigned"
+    });
+
+    res.redirect(`/admin-dashboard?email=${req.body.adminEmail}`);
+
+});
+
 app.post("/add-load", adminAuth, async (req, res) => {
 
-    await new Load(req.body).save();
+    const newLoad = new Load({
+        cargoName: req.body.cargoName,
+        weight: req.body.weight,
+        origin: req.body.origin,
+        destination: req.body.destination,
+        ownerEmail: req.body.ownerEmail,
+        deliveryFee: req.body.deliveryFee || 0,
+        status: "Pending"
+    });
+
+    await newLoad.save();
 
     res.redirect(`/admin-dashboard?email=${req.body.adminEmail}`);
 
@@ -189,7 +259,8 @@ app.post("/owner/create-load", async (req, res) => {
     try {
         const newLoad = new Load({
             ...req.body,
-            status: 'Pending' // Initial state for Admin to see
+            status: 'Pending',
+            deliveryFee: req.body.deliveryFee // Initial state for Admin to see
         });
         await newLoad.save();
         res.redirect(`/owner-dashboard?email=${req.body.ownerEmail}`);
@@ -285,6 +356,61 @@ Return ONLY valid JSON:
         res.status(500).json({
             error: "AI Dispatcher failed to process."
         });
+
+    }
+
+});
+
+// ================= AI price suggestion =================
+app.get("/ai-price/:loadId", async (req, res) => {
+
+    try {
+
+        const load = await Load.findById(req.params.loadId);
+
+        if (!load) {
+            return res.json({ error: "Load not found" });
+        }
+
+        const prompt = `
+You are a logistics pricing AI.
+
+Calculate delivery price.
+
+Cargo Weight: ${load.weight} kg
+Route: ${load.origin} to ${load.destination}
+
+Rules:
+- Base price: ₹20 per km
+- Weight surcharge: ₹2 per kg
+
+Return JSON:
+
+{
+ "suggestedPrice": 4500,
+ "reason": "Distance and weight calculation"
+}
+`;
+
+        const result = await aiModel.generateContent(prompt);
+
+        const text = result.response.text();
+
+        const cleaned = text.replace(/```json|```/g, "").trim();
+
+        const data = JSON.parse(cleaned);
+
+        await Load.findByIdAndUpdate(load._id, {
+            suggestedPrice: data.suggestedPrice
+        });
+
+        res.json(data);
+
+    } catch (err) {
+
+        console.error(err);
+
+        res.json({ error: "AI price calculation failed" });
 
     }
 
