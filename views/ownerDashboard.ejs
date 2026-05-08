@@ -163,22 +163,6 @@
 
     <!-- SIDE COLUMN -->
     <div class="col-side">
-
-        <!-- REGISTER VEHICLE -->
-        <div class="card">
-            <div class="card-header">
-                <span class="card-title"><span class="card-icon">🚛</span>Register Vehicle</span>
-            </div>
-            <div class="card-body">
-                <form action="/add-vehicle" method="POST" class="form-group">
-                    <input type="hidden" name="adminEmail" value="<%= user.email %>">
-                    <input type="text"   name="truckNumber" placeholder="Plate (e.g., KL-01-9999)" class="input" required>
-                    <input type="number" name="capacity"    placeholder="Capacity (kg)"              class="input" required>
-                    <button type="submit" class="btn btn-blue">Add to Fleet</button>
-                </form>
-            </div>
-        </div>
-
         <!-- REQUEST LOAD -->
         <div class="card">
             <div class="card-header">

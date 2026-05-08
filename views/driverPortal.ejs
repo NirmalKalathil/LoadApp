@@ -207,8 +207,9 @@
     </div>
     <% } %>
 
-    <% myLoads.forEach((load, i) => { %>
-    <div class="assign-card" style="animation-delay: <%= i * 0.06 %>s">
+   <% loads.forEach((load, i) => { %>
+
+<div class="assign-card" style="animation-delay: <%= i * 0.06 %>s">
         <div class="assign-top">
             <div>
                 <div class="assign-cargo"><%= load.cargoName %></div>
