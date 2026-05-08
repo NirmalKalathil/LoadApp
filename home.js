@@ -50,11 +50,58 @@ const loadSchema = new mongoose.Schema({
 });
 const vehicleSchema = new mongoose.Schema({
     truckNumber: String,
+
     type: String,
+
     capacity: Number,
+
     currentLocation: String,
-    status: { type: String, default: 'Available' },
-    ownerEmail: String // <--- ADD THIS LINE
+
+    status: {
+        type: String,
+        default: 'Available'
+    },
+
+    ownerEmail: String,
+
+    // DRIVER DETAILS
+    driverName: String,
+
+    driverEmail: String,
+
+    driverPhone: String,
+
+    // PERFORMANCE
+    rating: {
+        type: Number,
+        default: 5
+    },
+
+    successfulDeliveries: {
+        type: Number,
+        default: 0
+    },
+
+    failedDeliveries: {
+        type: Number,
+        default: 0
+    },
+
+    totalTrips: {
+        type: Number,
+        default: 0
+    },
+
+    // LIVE STATUS
+    lastActive: {
+        type: Date,
+        default: Date.now
+    },
+
+    availability: {
+        type: String,
+        default: 'Online'
+    }
 });
 
 const User = mongoose.model("user", userSchema);
@@ -164,11 +211,27 @@ app.get("/driver-portal", async (req, res) => {
     res.render("driverPortal", { user, myLoads, myVehicles, msg: req.query.msg });
 });
 app.post("/add-vehicle", roleAuth(['driver', 'admin']), async (req, res) => {
-    await new Vehicle({
-        truckNumber: req.body.truckNumber,
-        capacity: req.body.capacity,
-        driverEmail: req.body.adminEmail // Link vehicle to owner
-    }).save();
+    const driver = await User.findOne({
+    email: req.body.adminEmail
+});
+
+await new Vehicle({
+
+    truckNumber: req.body.truckNumber,
+
+    capacity: req.body.capacity,
+
+    driverEmail: req.body.adminEmail,
+
+    driverName: driver?.email || "Driver",
+
+    driverPhone: req.body.driverPhone || "N/A",
+
+    status: "Available",
+
+    availability: "Online"
+
+}).save();
     
     const redirectRoute = req.user.role === 'admin' ? 'admin-dashboard' : 'driver-portal';
     res.redirect(`/${redirectRoute}?email=${req.body.adminEmail}`);
@@ -176,28 +239,80 @@ app.post("/add-vehicle", roleAuth(['driver', 'admin']), async (req, res) => {
 
 app.get("/driver/pickup-load/:loadId", async (req, res) => {
 
-    await Load.findByIdAndUpdate(req.params.loadId, {
-        status: "Picked Up"
-    });
+    await Load.findByIdAndUpdate(
+        req.params.loadId,
+        {
+            status: "Picked Up"
+        }
+    );
 
-    res.redirect(`/driver-portal?email=${req.query.email}&msg=pickup`);
+    await Vehicle.findOneAndUpdate(
+        {
+            driverEmail: req.query.email
+        },
+        {
+            status: "On Route",
+            lastActive: new Date()
+        }
+    );
 
+    res.redirect(
+        `/driver-portal?email=${req.query.email}&msg=pickup`
+    );
 });
-app.get("/driver/pickup-load/:loadId", async (req, res) => {
 
-    await Load.findByIdAndUpdate(req.params.loadId,{
-        status:"Picked Up"
-    });
-
-    res.redirect(`/driver-portal?email=${req.query.email}&msg=pickup`);
-});
 app.get("/driver/deliver-load/:loadId", async (req, res) => {
 
-    await Load.findByIdAndUpdate(req.params.loadId,{
-        status:"Delivered"
+     // UPDATE LOAD
+    const load = await Load.findByIdAndUpdate(
+        req.params.loadId,
+        {
+            status: "Delivered"
+        },
+        { new: true }
+    );
+
+    // UPDATE DRIVER VEHICLE STATS
+    await Vehicle.findOneAndUpdate(
+        {
+            driverEmail: req.query.email
+        },
+        {
+            $inc: {
+                successfulDeliveries: 1,
+                totalTrips: 1
+            },
+
+            $set: {
+                status: "Available",
+                lastActive: new Date()
+            }
+        }
+    );
+       const vehicle = await Vehicle.findOne({
+        driverEmail: req.query.email
     });
 
+    if(vehicle){
+
+        vehicle.rating =
+            vehicle.totalTrips > 0
+            ? (
+                (vehicle.successfulDeliveries /
+                vehicle.totalTrips) * 5
+              ).toFixed(1)
+            : 5;
+
+        await vehicle.save();
+    }
+
     res.redirect(`/driver-portal?email=${req.query.email}&msg=delivered`);
+});
+// ================= DRIVER: ACCEPT & ROUTE =================
+app.get("/driver/accept-load/:loadId", async (req, res) => {
+    const load = await Load.findByIdAndUpdate(req.params.loadId, { status: 'Picked Up' });
+    // This triggers the view where they see the Leaflet map
+    res.redirect(`/driver-portal?email=${req.query.email}`);
 });
 // ================= SUPER ADMIN ROUTE =================
 app.get("/admin-dashboard", async (req, res) => {
@@ -209,7 +324,11 @@ app.get("/admin-dashboard", async (req, res) => {
         // Loads already dispatched / active
         const activeLoads = await Load.find({ status: { $ne: "Pending" } });
 
-        const vehicles = await Vehicle.find({});
+        const vehicles = await Vehicle.find({})
+.sort({
+    successfulDeliveries: -1,
+    rating: -1
+});
         const drivers = await User.find({ role: "driver" });
 
         res.render("adminDashboard", {
@@ -269,12 +388,7 @@ app.post("/owner/create-load", async (req, res) => {
     }
 });
 
-// ================= DRIVER: ACCEPT & ROUTE =================
-app.get("/driver/accept-load/:loadId", async (req, res) => {
-    const load = await Load.findByIdAndUpdate(req.params.loadId, { status: 'In Transit' });
-    // This triggers the view where they see the Leaflet map
-    res.redirect(`/driver-portal?email=${req.query.email}`);
-});
+
 // ================= AI DISPATCHER =================
 
 app.get("/ai-recommend/:loadId", adminAuth, async (req, res) => {

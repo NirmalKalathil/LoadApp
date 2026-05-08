@@ -186,6 +186,138 @@
         ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 
         @media (max-width: 1080px) { .layout { grid-template-columns: 1fr; padding: 16px 18px; } }
+
+        .btn-driver-info{
+    width:36px;
+    height:36px;
+    border:none;
+    border-radius:10px;
+    background:var(--surface2);
+    cursor:pointer;
+    font-size:14px;
+    transition:0.2s;
+}
+
+.btn-driver-info:hover{
+    background:var(--accent-light);
+}
+
+.driver-modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.45);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    backdrop-filter:blur(4px);
+}
+
+.driver-modal-box{
+    width:420px;
+    background:#fff;
+    border-radius:20px;
+    padding:24px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.2);
+}
+
+.driver-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+}
+
+.driver-head button{
+    border:none;
+    width:34px;
+    height:34px;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+.driver-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+}
+
+.driver-stat{
+    background:var(--surface2);
+    padding:14px;
+    border-radius:14px;
+}
+
+.driver-stat span{
+    display:block;
+    font-size:10px;
+    color:var(--text-muted);
+    margin-bottom:6px;
+}
+
+.driver-stat strong{
+    font-size:14px;
+}
+.fleet-card{
+    cursor:pointer;
+}
+
+.driver-modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.45);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+    backdrop-filter:blur(4px);
+}
+
+.driver-modal-box{
+    width:420px;
+    background:#fff;
+    border-radius:20px;
+    padding:24px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.2);
+}
+
+.driver-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+}
+
+.driver-head button{
+    border:none;
+    width:34px;
+    height:34px;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+.driver-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+}
+
+.driver-stat{
+    background:var(--surface2);
+    padding:14px;
+    border-radius:14px;
+}
+
+.driver-stat span{
+    display:block;
+    font-size:10px;
+    color:var(--text-muted);
+    margin-bottom:6px;
+}
+
+.driver-stat strong{
+    font-size:14px;
+}
     </style>
 </head>
 <body>
@@ -274,11 +406,46 @@
                                     <input type="hidden" name="loadId"     value="<%= load._id %>">
                                     <input type="hidden" name="adminEmail" value="<%= adminEmail %>">
                                     <select name="driverId">
-                                        <% drivers.forEach(driver => { %>
-                                            <option value="<%= driver._id %>"><%= driver.email %></option>
-                                        <% }) %>
-                                    </select>
-                                    <button type="submit" class="btn-dispatch">Dispatch</button>
+
+    <% drivers.forEach(driver => { %>
+
+        <%
+        const vehicle = vehicles.find(
+            v => v.driverEmail === driver.email
+        );
+        %>
+
+        <option
+            value="<%= driver._id %>"
+
+            data-name="<%= vehicle?.driverName || driver.email %>"
+
+            data-email="<%= driver.email %>"
+
+            data-rating="<%= vehicle?.rating || 5 %>"
+
+            data-deliveries="<%= vehicle?.successfulDeliveries || 0 %>"
+
+            data-phone="<%= vehicle?.driverPhone || 'N/A' %>"
+
+            data-status="<%= vehicle?.status || 'Available' %>"
+        >
+
+            <%= driver.email %>
+
+        </option>
+
+    <% }) %>
+
+</select>
+
+<button
+    type="button"
+    class="btn-driver-info"
+    onclick="showDriverDetails(this)"
+>
+    👤
+</button>
                                 </form>
                             </td>
                         </tr>
@@ -341,28 +508,185 @@
     <div class="col-side">
 
         <!-- FLEET -->
-        <div class="card">
-            <div class="card-header">
-                <span class="card-title"><span class="card-icon">🚚</span>Fleet Overview</span>
-                <span class="count-chip"><%= vehicles.length %> Total</span>
-            </div>
-            <div class="card-body" style="display:flex;flex-direction:column;gap:11px;">
-                <% vehicles.forEach(v => { %>
-                <div class="fleet-card">
-                    <div>
-                        <div class="fleet-truck"><%= v.truckNumber %></div>
-                        <div class="fleet-cap"><%= v.capacity %> kg capacity</div>
-                    </div>
-                    <% if(v.status === 'Available') { %>
-                        <span class="badge badge-green"><span class="dot dot-green"></span>Available</span>
-                    <% } else { %>
-                        <span class="badge badge-red"><span class="dot dot-red"></span>On Route</span>
-                    <% } %>
+       <div class="card">
+    <div class="card-header">
+        <span class="card-title">
+            <span class="card-icon">🚚</span>
+            Fleet Overview
+        </span>
+
+        <span class="count-chip">
+            <%= vehicles.length %> Total
+        </span>
+    </div>
+
+    <div class="card-body"
+         style="display:flex;flex-direction:column;gap:11px;">
+
+        <% vehicles.forEach(v => { %>
+
+        <div
+            class="fleet-card"
+
+            onclick="openFleetDriver(this)"
+
+            data-name="<%= v.driverName || v.driverEmail %>"
+
+            data-email="<%= v.driverEmail %>"
+
+            data-rating="<%= v.rating || 5 %>"
+
+            data-deliveries="<%= v.successfulDeliveries || 0 %>"
+
+            data-phone="<%= v.driverPhone || 'N/A' %>"
+
+            data-status="<%= v.status %>"
+        >
+
+            <div>
+
+                <div class="fleet-truck">
+                    <%= v.truckNumber %>
                 </div>
-                <% }) %>
+
+                <div class="fleet-cap">
+
+    <% if((v.successfulDeliveries || 0) === 0){ %>
+
+        New Driver
+
+    <% } else { %>
+
+        ⭐ <%= v.rating || 5 %>
+
+    <% } %>
+
+    •
+
+    <%= v.successfulDeliveries || 0 %> deliveries
+
+</div>
+
             </div>
+
+            <% if(v.status === 'Available') { %>
+
+                <span class="badge badge-green">
+                    <span class="dot dot-green"></span>
+                    Available
+                </span>
+
+            <% } else { %>
+
+                <span class="badge badge-red">
+                    <span class="dot dot-red"></span>
+                    On Route
+                </span>
+
+            <% } %>
+
         </div>
 
+        <% }) %>
+
+    </div>
+</div>
+<div class="card">
+
+    <div class="card-header">
+
+        <span class="card-title">
+            <span class="card-icon">🏆</span>
+            Driver Rankings
+        </span>
+
+        <span class="badge badge-indigo">
+            Top Performers
+        </span>
+
+    </div>
+
+    <div class="card-body"
+         style="display:flex;flex-direction:column;gap:12px;">
+
+        <% vehicles
+            .sort((a,b)=>
+                b.successfulDeliveries -
+                a.successfulDeliveries
+            )
+            .slice(0,5)
+            .forEach((v,index)=>{ %>
+
+            <div 
+    class="fleet-card"
+    onclick="openFleetDriver(this)"
+
+    data-name="<%= v.driverName || v.driverEmail %>"
+
+    data-email="<%= v.driverEmail %>"
+
+    data-rating="<%= v.rating || 5 %>"
+
+    data-deliveries="<%= v.successfulDeliveries || 0 %>"
+
+    data-phone="<%= v.driverPhone || 'N/A' %>"
+
+    data-status="<%= v.status %>"
+>
+
+                <div>
+
+                    <div class="fleet-truck">
+
+                        <% if(index === 0){ %>
+                            🥇
+                        <% } %>
+
+                        <%= v.driverName || v.driverEmail %>
+
+                    </div>
+
+                    <div class="fleet-cap">
+
+    <% if((v.successfulDeliveries || 0) === 0){ %>
+
+        New Driver
+
+    <% } else { %>
+
+        ⭐ <%= v.rating || 5 %>
+
+    <% } %>
+
+    •
+
+    <%= v.successfulDeliveries || 0 %> deliveries
+
+</div>
+
+                </div>
+
+                <% if(v.status === 'Available'){ %>
+
+                    <span class="badge badge-green">
+                        Available
+                    </span>
+
+                <% } else { %>
+
+                    <span class="badge badge-red">
+                        On Route
+                    </span>
+
+                <% } %>
+
+            </div>
+
+        <% }) %>
+
+    </div>
+
+</div>
         <!-- ADD VEHICLE -->
         <div class="add-card">
             <div class="add-title">Register Company Vehicle</div>
@@ -421,6 +745,161 @@
         } catch (err) { console.error(err); }
         finally { btn.classList.remove('spinning'); loader.style.display = 'none'; }
     }
+    function showDriverDetails(button){
+
+    const form =
+        button.closest('.dispatch-form');
+
+    const select =
+        form.querySelector('select');
+
+    const option =
+        select.options[select.selectedIndex];
+
+    document.getElementById('driverName')
+        .innerText = option.dataset.name;
+
+    document.getElementById('driverEmail')
+        .innerText = option.dataset.email;
+
+    document.getElementById('driverPhone')
+        .innerText = option.dataset.phone;
+
+    document.getElementById('driverRating')
+        .innerText = option.dataset.rating + " ⭐";
+
+    document.getElementById('driverDeliveries')
+        .innerText = option.dataset.deliveries;
+
+    document.getElementById('driverStatus')
+        .innerText = option.dataset.status;
+
+    document.getElementById('driverModal')
+        .style.display = 'flex';
+}
+
+function closeDriverModal(){
+
+    document.getElementById('driverModal')
+        .style.display = 'none';
+}
+function openFleetDriver(card){
+
+    document.getElementById('driverName')
+        .innerText = card.dataset.name;
+
+    document.getElementById('driverEmail')
+        .innerText = card.dataset.email;
+
+    document.getElementById('driverPhone')
+        .innerText = card.dataset.phone;
+
+    document.getElementById('driverRating')
+        .innerText = card.dataset.rating + " ⭐";
+
+    document.getElementById('driverDeliveries')
+        .innerText = card.dataset.deliveries;
+
+    document.getElementById('driverStatus')
+        .innerText = card.dataset.status;
+
+    document.getElementById('driverModal')
+        .style.display = 'flex';
+}
+
+function closeDriverModal(){
+
+    document.getElementById('driverModal')
+        .style.display = 'none';
+}
 </script>
+<div id="driverModal" class="driver-modal">
+
+    <div class="driver-modal-box">
+
+        <div class="driver-head">
+
+            <h2 id="driverName">Driver</h2>
+
+            <button onclick="closeDriverModal()">✕</button>
+
+        </div>
+
+        <div class="driver-grid">
+
+            <div class="driver-stat">
+                <span>Email</span>
+                <strong id="driverEmail"></strong>
+            </div>
+
+            <div class="driver-stat">
+                <span>Phone</span>
+                <strong id="driverPhone"></strong>
+            </div>
+
+            <div class="driver-stat">
+                <span>Rating</span>
+                <strong id="driverRating"></strong>
+            </div>
+
+            <div class="driver-stat">
+                <span>Deliveries</span>
+                <strong id="driverDeliveries"></strong>
+            </div>
+
+            <div class="driver-stat">
+                <span>Status</span>
+                <strong id="driverStatus"></strong>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+<div id="driverModal" class="driver-modal">
+
+    <div class="driver-modal-box">
+
+        <div class="driver-head">
+
+            <h2 id="driverName">Driver</h2>
+
+            <button onclick="closeDriverModal()">✕</button>
+
+        </div>
+
+        <div class="driver-grid">
+
+            <div class="driver-stat">
+                <span>Email</span>
+                <strong id="driverEmail"></strong>
+            </div>
+
+            <div class="driver-stat">
+                <span>Phone</span>
+                <strong id="driverPhone"></strong>
+            </div>
+
+            <div class="driver-stat">
+                <span>Rating</span>
+                <strong id="driverRating"></strong>
+            </div>
+
+            <div class="driver-stat">
+                <span>Deliveries</span>
+                <strong id="driverDeliveries"></strong>
+            </div>
+
+            <div class="driver-stat">
+                <span>Status</span>
+                <strong id="driverStatus"></strong>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 </body>
 </html>
