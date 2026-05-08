@@ -402,52 +402,53 @@
                                 <button class="ai-btn" onclick="runAI(event,'<%= load._id %>','<%= load.origin %>','<%= load.destination %>')">✨</button>
                             </td>
                             <td>
-                                <form action="/assign-load" method="POST" class="dispatch-form">
-                                    <input type="hidden" name="loadId"     value="<%= load._id %>">
-                                    <input type="hidden" name="adminEmail" value="<%= adminEmail %>">
-                                    <select name="driverId">
+    <form action="/assign-load" method="POST" class="dispatch-form">
 
-    <% drivers.forEach(driver => { %>
+        <input type="hidden" name="loadId" value="<%= load._id %>">
+        <input type="hidden" name="adminEmail" value="<%= adminEmail %>">
 
-        <%
-        const vehicle = vehicles.find(
-            v => v.driverEmail === driver.email
-        );
-        %>
+        <select name="driverId" class="driver-select">
 
-        <option
-            value="<%= driver._id %>"
+            <% drivers.forEach(driver => { %>
 
-            data-name="<%= vehicle?.driverName || driver.email %>"
+                <%
+                const vehicle = vehicles.find(
+                    v => v.driverEmail === driver.email
+                );
+                %>
 
-            data-email="<%= driver.email %>"
+                <option
+                    value="<%= driver._id %>"
 
-            data-rating="<%= vehicle?.rating || 5 %>"
+                    data-name="<%= vehicle?.driverName || driver.email %>"
+                    data-email="<%= driver.email %>"
+                    data-rating="<%= vehicle?.rating || 5 %>"
+                    data-deliveries="<%= vehicle?.successfulDeliveries || 0 %>"
+                    data-phone="<%= vehicle?.driverPhone || 'N/A' %>"
+                    data-status="<%= vehicle?.status || 'Available' %>"
+                >
+                    <%= driver.email %>
 
-            data-deliveries="<%= vehicle?.successfulDeliveries || 0 %>"
+                </option>
 
-            data-phone="<%= vehicle?.driverPhone || 'N/A' %>"
+            <% }) %>
 
-            data-status="<%= vehicle?.status || 'Available' %>"
+        </select>
+
+        <button
+            type="button"
+            class="btn-driver-info"
+            onclick="showDriverDetails(this)"
         >
+            👤
+        </button>
 
-            <%= driver.email %>
+        <button type="submit" class="btn-dispatch">
+            Dispatch
+        </button>
 
-        </option>
-
-    <% }) %>
-
-</select>
-
-<button
-    type="button"
-    class="btn-driver-info"
-    onclick="showDriverDetails(this)"
->
-    👤
-</button>
-                                </form>
-                            </td>
+    </form>
+</td>
                         </tr>
                         <% }) %>
                     </tbody>
