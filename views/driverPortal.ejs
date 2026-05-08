@@ -220,67 +220,137 @@
 </div>
 
     <!-- SUCCESS TOAST -->
-    <% if (typeof msg !== 'undefined') { %>
+<% if (typeof msg !== 'undefined') { %>
+
     <div class="toast toast-green">
+
         <% if(msg === 'pickup') { %>
             🚚 Load successfully picked up!
         <% } %>
+
         <% if(msg === 'delivered') { %>
             ✅ Delivery completed successfully!
         <% } %>
-    </div>
-    <% } %>
 
-    <!-- ASSIGNMENTS HEADER -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px;">
-        <span class="section-title">My Assignments</span>
-        <span style="font-size:11px;color:var(--text-muted);font-weight:500;"><%= myLoads.length %> load<%= myLoads.length !== 1 ? 's' : '' %></span>
     </div>
 
-    <!-- ASSIGNMENT CARDS -->
-    <% if(myLoads.length === 0) { %>
-    <div class="card">
-        <div class="empty-state">
-            <div class="empty-icon">📋</div>
-            No active loads assigned to you yet.
-        </div>
-    </div>
-    <% } %>
+<% } %>
 
-   <% loads.forEach((load, i) => { %>
+<!-- ASSIGNMENTS HEADER -->
+<div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px;">
 
-<div class="assign-card" style="animation-delay: <%= i * 0.06 %>s">
-        <div class="assign-top">
-            <div>
-                <div class="assign-cargo"><%= load.cargoName %></div>
-                <div class="assign-route"><%= load.origin %> → <%= load.destination %></div>
-                <div class="assign-tags">
-                    <span class="tag tag-gray">Weight: <%= load.weight %>kg</span>
-                    <span class="tag tag-blue"><%= load.status %></span>
-                    <span class="tag tag-green">Fee: ₹<%= load.ownerPrice || "Not Set" %></span>
-                    <span class="tag tag-amber">AI: ₹<%= load.suggestedPrice || "Calculating" %></span>
-                </div>
-            </div>
-        </div>
-        <div class="assign-actions">
-            <button class="btn-action btn-map" onclick="viewRoute('<%= load.origin %>', '<%= load.destination %>')">
-                🗺 View Route
-            </button>
-            <% if(load.status === 'Assigned') { %>
-            <a href="/driver/pickup-load/<%= load._id %>?email=<%= user.email %>" class="btn-action btn-pickup">
-                📦 Pickup Load
-            </a>
-            <% } %>
-            <% if(load.status === 'Picked Up') { %>
-            <a href="/driver/deliver-load/<%= load._id %>?email=<%= user.email %>" class="btn-action btn-deliver">
-                ✅ Mark Delivered
-            </a>
-            <% } %>
-        </div>
-    </div>
-    <% }) %>
+    <span class="section-title">
+        My Assignments
+    </span>
+
+    <span style="font-size:11px;color:var(--text-muted);font-weight:500;">
+
+        <%= myLoads.length %>
+        load<%= myLoads.length !== 1 ? 's' : '' %>
+
+    </span>
 
 </div>
+
+<!-- EMPTY STATE -->
+<% if(myLoads.length === 0) { %>
+
+<div class="card">
+
+    <div class="empty-state">
+
+        <div class="empty-icon">📋</div>
+
+        No active loads assigned to you yet.
+
+    </div>
+
+</div>
+
+<% } %>
+
+<!-- ASSIGNMENT CARDS -->
+<% myLoads.forEach((load, i) => { %>
+
+<div class="assign-card"
+     style="animation-delay:<%= i * 0.06 %>s">
+
+    <div class="assign-top">
+
+        <div>
+
+            <div class="assign-cargo">
+                <%= load.cargoName %>
+            </div>
+
+            <div class="assign-route">
+                <%= load.origin %> →
+                <%= load.destination %>
+            </div>
+
+            <div class="assign-tags">
+
+                <span class="tag tag-gray">
+                    Weight: <%= load.weight %>kg
+                </span>
+
+                <span class="tag tag-blue">
+                    <%= load.status %>
+                </span>
+
+                <span class="tag tag-green">
+                    Fee: ₹<%= load.ownerPrice || "Not Set" %>
+                </span>
+
+                <span class="tag tag-amber">
+                    AI: ₹<%= load.suggestedPrice || "Calculating" %>
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="assign-actions">
+
+        <button
+            class="btn-action btn-map"
+            onclick="viewRoute(
+                '<%= load.origin %>',
+                '<%= load.destination %>'
+            )"
+        >
+            🗺 View Route
+        </button>
+
+        <% if(load.status === 'Assigned') { %>
+
+            <a
+                href="/driver/pickup-load/<%= load._id %>?email=<%= user.email %>"
+                class="btn-action btn-pickup"
+            >
+                📦 Pickup Load
+            </a>
+
+        <% } %>
+
+        <% if(load.status === 'Picked Up') { %>
+
+            <a
+                href="/driver/deliver-load/<%= load._id %>?email=<%= user.email %>"
+                class="btn-action btn-deliver"
+            >
+                ✅ Mark Delivered
+            </a>
+
+        <% } %>
+
+    </div>
+
+</div>
+
+<% }) %>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
