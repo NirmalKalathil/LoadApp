@@ -6,7 +6,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const app = express();
 
 // ================= GEMINI =================
-const genAI = new GoogleGenerativeAI("AIzaSyAKAS2QvTv8CxBnE3PqSLuq4FW5AjLDWsI");
+const genAI = new GoogleGenerativeAI("api here");
 
 // Latest working model
 const aiModel = genAI.getGenerativeModel({
@@ -46,7 +46,16 @@ const loadSchema = new mongoose.Schema({
     assignedVehicle: String,
     deliveryFee: Number ,       // final price paid to driver
     suggestedPrice: Number , 
-    ownerPrice: Number    
+    ownerPrice: Number , 
+    pickupDate: {
+    type: Date,
+    required: false
+},
+
+deliveryDate: {
+    type: Date,
+    required: false
+}   
 });
 const vehicleSchema = new mongoose.Schema({
     truckNumber: String,
@@ -331,6 +340,17 @@ app.get("/admin-dashboard", async (req, res) => {
 });
         const drivers = await User.find({ role: "driver" });
 
+        const enrichedActiveLoads = activeLoads.map(load => {
+
+            const vehicle = vehicles.find(v =>
+                v.driverEmail === load.assignedDriver?.email
+            );
+
+            return {
+                ...load.toObject(),
+                assignedVehicleData: vehicle || null
+            };
+        });
         res.render("adminDashboard", {
             pendingLoads,
             activeLoads,
@@ -348,7 +368,8 @@ app.get("/admin-dashboard", async (req, res) => {
 app.post("/assign-load", adminAuth, async (req, res) => {
 
     await Load.findByIdAndUpdate(req.body.loadId, {
-        assignedDriver: req.body.driverId,
+        
+        assignedVehicle: req.body.vehicleId, 
         status: "Assigned"
     });
 
@@ -365,6 +386,8 @@ app.post("/add-load", adminAuth, async (req, res) => {
         destination: req.body.destination,
         ownerEmail: req.body.ownerEmail,
         deliveryFee: req.body.deliveryFee || 0,
+        pickupDate: req.body.pickupDate || null,
+    deliveryDate: req.body.deliveryDate || null,
         status: "Pending"
     });
 
@@ -373,13 +396,27 @@ app.post("/add-load", adminAuth, async (req, res) => {
     res.redirect(`/admin-dashboard?email=${req.body.adminEmail}`);
 
 });
+app.post("/update-delivery-fee", adminAuth, async (req, res) => {
+  try {
+    const { loadId, deliveryFee } = req.body;
+
+    await Load.findByIdAndUpdate(loadId, {
+      deliveryFee: Number(deliveryFee)
+    });
+
+    res.redirect(`/admin-dashboard?email=${req.body.adminEmail}`);
+  } catch (err) {
+    console.error(err);
+    res.send("Failed to update delivery fee");
+  }
+});
 // ================= OWNER: CREATE LOAD =================
 app.post("/owner/create-load", async (req, res) => {
     try {
         const newLoad = new Load({
             ...req.body,
             status: 'Pending',
-            deliveryFee: req.body.deliveryFee // Initial state for Admin to see
+            
         });
         await newLoad.save();
         res.redirect(`/owner-dashboard?email=${req.body.ownerEmail}`);
@@ -477,59 +514,56 @@ Return ONLY valid JSON:
 
 // ================= AI price suggestion =================
 app.get("/ai-price/:loadId", async (req, res) => {
+  try {
+    const load = await Load.findById(req.params.loadId);
 
-    try {
+    if (!load) {
+      return res.json({ error: "Load not found" });
+    }
 
-        const load = await Load.findById(req.params.loadId);
-
-        if (!load) {
-            return res.json({ error: "Load not found" });
-        }
-
-        const prompt = `
+    const prompt = `
 You are a logistics pricing AI.
 
-Calculate delivery price.
+Give ONLY an estimated market price (not final billing price).
 
-Cargo Weight: ${load.weight} kg
-Route: ${load.origin} to ${load.destination}
+Data:
+- Weight: ${load.weight} kg
+- Route: ${load.origin} → ${load.destination}
 
-Rules:
-- Base price: ₹20 per km
-- Weight surcharge: ₹2 per kg
+Assume:
+- ₹20 per km average market rate
+- ₹2 per kg weight handling cost
+- Include typical real-world variations (fuel, tolls, demand)
 
-Return JSON:
-
+Return ONLY JSON:
 {
- "suggestedPrice": 4500,
- "reason": "Distance and weight calculation"
+  "estimatedPrice": 0,
+  "reason": "short explanation of estimation logic"
 }
 `;
 
-        const result = await aiModel.generateContent(prompt);
+    const result = await aiModel.generateContent(prompt);
+    const text = result.response.text();
 
-        const text = result.response.text();
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    const data = JSON.parse(cleaned);
 
-        const cleaned = text.replace(/```json|```/g, "").trim();
+    // Save ONLY as reference (not overriding owner price)
+    await Load.findByIdAndUpdate(load._id, {
+      aiEstimatedPrice: data.estimatedPrice
+    });
 
-        const data = JSON.parse(cleaned);
+    res.json({
+      ownerPrice: load.price, // your real system price
+      aiEstimatedPrice: data.estimatedPrice,
+      reason: data.reason
+    });
 
-        await Load.findByIdAndUpdate(load._id, {
-            suggestedPrice: data.suggestedPrice
-        });
-
-        res.json(data);
-
-    } catch (err) {
-
-        console.error(err);
-
-        res.json({ error: "AI price calculation failed" });
-
-    }
-
+  } catch (err) {
+    console.error(err);
+    res.json({ error: "AI estimation failed" });
+  }
 });
-
 // ================= ASSIGN LOAD =================
 
 app.post("/assign-load", adminAuth, async (req, res) => {

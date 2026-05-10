@@ -132,13 +132,73 @@
 
         .empty-state { padding: 52px 20px; text-align: center; color: var(--text-muted); font-size: 12px; }
         .empty-icon  { font-size: 32px; margin-bottom: 10px; opacity: 0.4; }
+         .logout-btn {
+    background-color: #2563eb; /* blue */
+    color: white;
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
 
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+        .top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+}
 
+/* Email styling */
+.user-email {
+    background: #f1f5f9;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 999px; /* full curve */
+    border: 1px solid #e2e8f0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    white-space: nowrap;
+}
+
+/* Optional small email icon */
+.user-email::before {
+    content: "👤";
+    font-size: 14px;
+}
+
+/* Logout button */
+.logout-btn {
+    background-color: #2563eb;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: 0.2s;
+}
+
+.logout-btn:hover {
+    background-color: #1d4ed8;
+}
         @media (max-width: 700px) { .layout { padding: 16px 18px; } .assign-top { flex-direction: column; } }
     </style>
+    
+</a>
 </head>
 <body>
 
@@ -148,7 +208,17 @@
         <span class="nav-title">Smart<span>Logist</span></span>
         <span class="nav-pill">Driver</span>
     </div>
-    <span class="nav-email"><%= user.email %></span>
+    <div class="top-bar">
+
+    <div class="user-email">
+        <%= user.email %>
+    </div>
+
+    <a href="/logout" class="logout-btn">
+        🚪 Sign Out
+    </a>
+
+</div>
 </nav>
 
 <div class="layout">

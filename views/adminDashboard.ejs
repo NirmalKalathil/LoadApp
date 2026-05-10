@@ -457,56 +457,134 @@
         </div>
 
         <!-- ACTIVE DISPATCHES -->
-        <div class="card">
-            <div class="card-header">
-                <span class="card-title"><span class="card-icon">🚛</span>Active Dispatches</span>
-                <span class="badge badge-green"><%= activeLoads.length %> Active</span>
-            </div>
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Cargo</th><th>Route</th><th>Driver</th>
-                            <th>AI Price</th><th>Owner Price</th><th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% if(activeLoads.length === 0) { %>
-                        <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🚦</div>No dispatched loads yet</div></td></tr>
-                        <% } else { %>
-                        <% activeLoads.forEach(load => { %>
-                        <tr>
-                            <td><div class="cargo-name"><%= load.cargoName %></div></td>
-                            <td>
-                                <div class="route-pill">
-                                    <span class="pill-orig"><%= load.origin %></span>
-                                    <span class="pill-arr">→</span>
-                                    <span class="pill-dest"><%= load.destination %></span>
-                                </div>
-                            </td>
-                            <td style="font-size:12px;color:var(--text-secondary);font-weight:500;"><%= load.assignedDriver ? load.assignedDriver : "Assigned" %></td>
-                            <td><span class="badge badge-blue">₹ <%= load.suggestedPrice || "—" %></span></td>
-                            <td><span class="badge badge-green">₹ <%= load.ownerPrice || "—" %></span></td>
-                            <td>
-                                <%
-                                    let sc = 'badge-gray';
-                                    if(load.status === 'Assigned')  sc = 'badge-blue';
-                                    if(load.status === 'Picked Up') sc = 'badge-indigo';
-                                    if(load.status === 'Delivered') sc = 'badge-green';
-                                %>
-                                <span class="badge <%= sc %>"><%= load.status %></span>
-                            </td>
-                        </tr>
-                        <% }) %>
-                        <% } %>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">
+            <span class="card-icon">🚛</span>
+            Active Dispatches
+        </span>
+        <span class="badge badge-green"><%= activeLoads.length %> Active</span>
     </div>
 
-    <div class="col-side">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Cargo</th>
+                    <th>Route</th>
+                    <th>Driver</th>
+                    <th>AI Price</th>
+                    <th>Pricing</th>
+                    <th>Admin Charge</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+            <% if(activeLoads.length === 0) { %>
+
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <div class="empty-icon">🚦</div>
+                            No dispatched loads yet
+                        </div>
+                    </td>
+                </tr>
+
+            <% } else { %>
+
+                <% activeLoads.forEach(load => { %>
+
+                <tr>
+
+                    <!-- CARGO -->
+                    <td>
+                        <div class="cargo-name"><%= load.cargoName %></div>
+                    </td>
+
+                    <!-- ROUTE -->
+                    <td>
+                        <div class="route-pill">
+                            <span class="pill-orig"><%= load.origin %></span>
+                            <span class="pill-arr">→</span>
+                            <span class="pill-dest"><%= load.destination %></span>
+                        </div>
+                    </td>
+
+<td style="font-size:12px;color:var(--text-secondary);font-weight:500;">
+    <%= load.assignedVehicle?.driverName || "Assigned" %>
+</td>
+
+                    <!-- AI PRICE -->
+                    <td>
+                        <span class="badge badge-indigo">
+                            AI: ₹ <%= load.aiEstimatedPrice ?? "—" %>
+                        </span>
+                    </td>
+
+                    <!-- PRICING BREAKDOWN -->
+                    <td>
+                        <div class="flex flex-col">
+
+                            <span class="badge badge-green">
+                                Base: ₹ <%= load.ownerPrice ?? 0 %>
+                            </span>
+
+                            <span class="badge badge-indigo mt-1">
+                                Extra: ₹ <%= load.deliveryFee ?? 0 %>
+                            </span>
+
+                            <span class="font-bold text-sm mt-1">
+                                Total: ₹ <%= (load.ownerPrice || 0) + (load.deliveryFee || 0) %>
+                            </span>
+
+                        </div>
+                    </td>
+
+                    <!-- ADMIN CHARGE EDIT -->
+                    <td>
+                        <form action="/update-delivery-fee" method="POST" class="flex flex-col gap-1">
+
+                            <input type="hidden" name="loadId" value="<%= load._id %>">
+                            <input type="hidden" name="adminEmail" value="<%= adminEmail %>">
+
+                            <input
+                                type="number"
+                                name="deliveryFee"
+                                value="<%= load.deliveryFee ?? 0 %>"
+                                class="price-input"
+                                style="width:90px"
+                                onchange="this.form.submit()"
+                            >
+
+                        </form>
+                    </td>
+
+                    <!-- STATUS -->
+                    <td>
+                        <%
+                            let sc = 'badge-gray';
+                            if(load.status === 'Assigned')  sc = 'badge-blue';
+                            if(load.status === 'Picked Up') sc = 'badge-indigo';
+                            if(load.status === 'Delivered') sc = 'badge-green';
+                        %>
+                        <span class="badge <%= sc %>">
+                            <%= load.status %>
+                        </span>
+                    </td>
+
+                </tr>
+
+                <% }) %>
+
+            <% } %>
+
+            </tbody>
+        </table>
+    </div>
+</div>
 
         <!-- FLEET -->
        <div class="card">
@@ -531,7 +609,7 @@
 
             onclick="openFleetDriver(this)"
 
-            data-name="<%= v.driverName || v.driverEmail %>"
+            data-name="<%= v.driverName  %>"
 
             data-email="<%= v.driverEmail %>"
 
@@ -688,18 +766,7 @@
     </div>
 
 </div>
-        <!-- ADD VEHICLE -->
-        <div class="add-card">
-            <div class="add-title">Register Company Vehicle</div>
-            <div class="add-sub">Add internal fleet trucks directly to the dispatch system.</div>
-            <form action="/add-vehicle" method="POST">
-                <input type="hidden" name="adminEmail" value="<%= adminEmail %>">
-                <input type="text"   name="truckNumber" placeholder="Truck Plate Number" class="form-input" required>
-                <input type="number" name="capacity"    placeholder="Capacity (kg)"       class="form-input" required>
-                <button type="submit" class="btn-register">Register Truck →</button>
-            </form>
-        </div>
-
+        
     </div>
 
 </div>
