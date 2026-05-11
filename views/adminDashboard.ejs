@@ -407,33 +407,36 @@
         <input type="hidden" name="loadId" value="<%= load._id %>">
         <input type="hidden" name="adminEmail" value="<%= adminEmail %>">
 
-        <select name="driverId" class="driver-select">
+        <select name="vehicleId" class="driver-select">
 
-            <% drivers.forEach(driver => { %>
+    <% drivers.forEach(driver => { %>
 
-                <%
-                const vehicle = vehicles.find(
-                    v => v.driverEmail === driver.email
-                );
-                %>
+        <%
+        const vehicle = vehicles.find(
+            v => v.driverEmail === driver.email
+        );
+        %>
 
-                <option
-                    value="<%= driver._id %>"
+        <% if(vehicle){ %>
 
-                    data-name="<%= vehicle?.driverName || driver.email %>"
-                    data-email="<%= driver.email %>"
-                    data-rating="<%= vehicle?.rating || 5 %>"
-                    data-deliveries="<%= vehicle?.successfulDeliveries || 0 %>"
-                    data-phone="<%= vehicle?.driverPhone || 'N/A' %>"
-                    data-status="<%= vehicle?.status || 'Available' %>"
-                >
-                    <%= driver.email %>
+        <option
+            value="<%= vehicle._id %>"
 
-                </option>
+            data-name="<%= vehicle.driverName %>"
+            data-email="<%= driver.email %>"
+            data-rating="<%= vehicle.rating || 5 %>"
+            data-deliveries="<%= vehicle.successfulDeliveries || 0 %>"
+            data-phone="<%= vehicle.driverPhone || 'N/A' %>"
+            data-status="<%= vehicle.status || 'Available' %>"
+        >
+            <%= vehicle.driverName %> • <%= vehicle.truckNumber %>
+        </option>
 
-            <% }) %>
+        <% } %>
 
-        </select>
+    <% }) %>
+
+</select>
 
         <button
             type="button"
@@ -514,8 +517,7 @@
                     </td>
 
 <td style="font-size:12px;color:var(--text-secondary);font-weight:500;">
-    <%= load.assignedVehicle?.driverName || "Assigned" %>
-</td>
+<%= load.assignedDriver?.email || "Assigned" %></td>
 
                     <!-- AI PRICE -->
                     <td>

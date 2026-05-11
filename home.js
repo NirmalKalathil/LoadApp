@@ -6,7 +6,7 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const app = express();
 
 // ================= GEMINI =================
-const genAI = new GoogleGenerativeAI("api here");
+const genAI = new GoogleGenerativeAI("AIzaSyAYoapnteSrTlvOlMLDbt-y5fdAkcKTQa4");
 
 // Latest working model
 const aiModel = genAI.getGenerativeModel({
@@ -331,7 +331,11 @@ app.get("/admin-dashboard", async (req, res) => {
         const pendingLoads = await Load.find({ status: "Pending" });
 
         // Loads already dispatched / active
-        const activeLoads = await Load.find({ status: { $ne: "Pending" } });
+        const activeLoads = await Load.find({
+        status: { $ne: "Pending" }
+    }).populate("assignedDriver");
+
+
 
         const vehicles = await Vehicle.find({})
 .sort({
@@ -367,16 +371,32 @@ app.get("/admin-dashboard", async (req, res) => {
 
 app.post("/assign-load", adminAuth, async (req, res) => {
 
+    const vehicle = await Vehicle.findById(req.body.vehicleId);
+
+    if (!vehicle) {
+        return res.send("Vehicle not found");
+    }
+
+    const driver = await User.findOne({
+        email: vehicle.driverEmail,
+        role: "driver"
+    });
+
+    if (!driver) {
+        return res.send("Driver not found");
+    }
+
     await Load.findByIdAndUpdate(req.body.loadId, {
-        
-        assignedVehicle: req.body.vehicleId, 
+
+        assignedDriver: driver._id,
+
+        assignedVehicle: vehicle.truckNumber,
+
         status: "Assigned"
     });
 
     res.redirect(`/admin-dashboard?email=${req.body.adminEmail}`);
-
 });
-
 app.post("/add-load", adminAuth, async (req, res) => {
 
     const newLoad = new Load({
